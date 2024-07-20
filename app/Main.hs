@@ -4,7 +4,7 @@
 -- https://hackage.haskell.org/package/mustache-2.4.2/docs/doc-index.html
 --
 {-# LANGUAGE ApplicativeDo, DataKinds, DeriveGeneric #-}
-{-# LANGUAGE DerivingVia, LambdaCase, TypeApplications #-}
+{-# LANGUAGE DerivingVia, TypeApplications #-}
 
 module Main where
 
@@ -27,7 +27,9 @@ import qualified Development.Shake.FilePath as Shake
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
 import qualified Text.Pandoc as Pandoc
-
+import Config
+import Utilities
+import Templates
 -- target = thing we want
 -- Rule = pattern of thing being made + actions to produce the thing
 -- Action = actions to produce a thing
@@ -39,8 +41,6 @@ main = Shake.shakeArgs Shake.shakeOptions $ do
   Shake.withTargetDocs "Clean the built site" $
     "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
 
-outputDir :: String
-outputDir = "publish"
 
 buildSite :: Action ()
 buildSite = do
@@ -59,6 +59,12 @@ buildSite = do
     -- remaining pages, index.xml = rss feed
     Shake.need $ map (outputDir </>) ["index.html", "index.xml"]
 
+buildRules :: Rules ()
+buildRules = do
+  assets
+  pages
+  posts
+
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
 assets = map (outputDir </>) assetGlobs |%> \target -> do
@@ -66,36 +72,53 @@ assets = map (outputDir </>) assetGlobs |%> \target -> do
   Shake.copyFileChanged src target
   Shake.putInfo $ "Copied " <> target <> " from " <> src
 
-typstToHtml :: FilePath -> Action Text
-typstToHtml filePath = do
-  content <- Shake.readFile' filePath
-  Shake.quietly . Shake.traced "Typst to HTML" $ do
-    doc <- runPandoc . Pandoc.readTypst readerOptions . T.pack $ content
-    
-    runPandoc . Pandoc.writeHtml5String writerOptions $ doc
-  where
-    readerOptions =
-      Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
-    writerOptions =
-      Pandoc.def {Pandoc.writerExtensions = Pandoc.pandocExtensions}
-
 data Page = Page {pageTitle :: Text, pageContent :: Text}
   deriving (Show, Generic)
   deriving (ToJSON) via PrefixedSnake "page" Page
 
-assetGlobs :: [String]
-assetGlobs = ["static/*"]
+pages :: Rules ()
+pages = map indexHtmlOutputPath pagePaths |%> \target -> do
+  let src = indexHtmlSourcePath target
+  (meta, html) <- typstToHtml src
 
-pagePaths :: [String]
-pagePaths = ["about.md", "contact.md"]
+  let page = Page (meta HM.! "title") html
+  applyTemplateAndWrite "default.html" page target
+  Shake.putInfo $ "Built " <> target <> " from " <> src
 
-postGlobs :: [String]
-postGlobs = ["posts/*.typ"]
+data Post = Post
+  { postTitle :: Text,
+    postAuthor :: Maybe Text,
+    postTags :: [Text],
+    postDate :: Maybe Text,
+    postContent :: Maybe Text,
+    postLink :: Maybe Text
+  } deriving (Show, Generic)
+    deriving (FromJSON, ToJSON) via PrefixedSnake "post" Post
 
-runPandoc action =
-      Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
-        >>= either (fail . show) return
+posts :: Rules ()
+posts = map indexHtmlOutputPath postGlobs |%> \target -> do
+  let src = indexHtmlSourcePath target
+  post <- readPost src
+  postHtml <- applyTemplate "post.html" post
 
-indexHtmlOutputPath :: FilePath -> FilePath
-indexHtmlOutputPath srcPath =
-  outputDir </> Shake.dropExtension srcPath </> "index.html"
+  let page = Page (postTitle post) postHtml
+  applyTemplateAndWrite "default.html" page target
+  Shake.putInfo $ "Built " <> target <> " from " <> src
+
+readPost :: FilePath -> Action Post
+readPost postPath = do
+  date <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d"
+    . take 10
+    . Shake.takeBaseName
+    $ postPath
+  let formattedDate =
+        T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date
+
+  (post, html) <- typstToHtml postPath
+  Shake.putInfo $ "Read " <> postPath
+  return $ post
+    { postDate = Just formattedDate,
+      postContent = Just html,
+      postLink = Just . T.pack $ "/" <> Shake.dropExtension postPath <> "/"
+    }
+
