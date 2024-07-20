@@ -7,7 +7,7 @@ assetGlobs :: [String]
 assetGlobs = ["static/*"]
 
 pagePaths :: [String]
-pagePaths = ["about.md", "contact.md"]
+pagePaths = ["links.typ"]
 
 postGlobs :: [String]
 postGlobs = ["posts/*.typ"]
