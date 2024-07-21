@@ -8,25 +8,16 @@
 
 module Main where
 
-import Control.Monad (forM, void)
-import Data.Aeson.Types (Result (..))
-import Data.List (nub, sortOn)
 import Data.Text (Text)
 import Data.Time (UTCTime, defaultTimeLocale, formatTime, parseTimeM)
 import Deriving.Aeson
 import Deriving.Aeson.Stock (PrefixedSnake)
-import Development.Shake (Action, Rules, (%>), (|%>), (~>))
-import Development.Shake.FilePath ((<.>), (</>))
-import Text.Pandoc (Block (Plain), Meta (..), MetaValue (..), Pandoc (..))
-import qualified Data.Aeson.Types as A
+import Development.Shake (Action, Rules, (|%>), (~>))
+import Development.Shake.FilePath ((</>))
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Ord as Ord
 import qualified Data.Text as T
 import qualified Development.Shake as Shake
 import qualified Development.Shake.FilePath as Shake
-import qualified Text.Mustache as Mus
-import qualified Text.Mustache.Compile as Mus
-import qualified Text.Pandoc as Pandoc
 import Config
 import Utilities
 import Templates

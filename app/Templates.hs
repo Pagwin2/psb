@@ -12,7 +12,7 @@ import qualified Data.Aeson as A
 import qualified Data.Text as T
 import Development.Shake.FilePath ((</>))
 
-applyTemplate :: ToJSON a => String -> a ->  Text
+applyTemplate :: ToJSON a => String -> a -> Action Text
 applyTemplate templateName context = do
   tmpl <- readTemplate $ "templates" </> templateName
   case Mus.checkedSubstitute tmpl (A.toJSON context) of
