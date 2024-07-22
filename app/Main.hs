@@ -9,13 +9,16 @@
 
 module Main where
 
+import Control.Monad (forM)
+import Data.List (sortOn)
 import Data.Text (Text)
 import Data.Time (UTCTime, defaultTimeLocale, formatTime, parseTimeM)
 import Deriving.Aeson
 import Deriving.Aeson.Stock (PrefixedSnake)
-import Development.Shake (Action, Rules, (|%>), (~>))
+import Development.Shake (Action, Rules, (|%>), (~>), (%>))
 import Development.Shake.FilePath ((</>))
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Ord as Ord
 import qualified Data.Text as T
 import qualified Development.Shake as Shake
 import qualified Development.Shake.FilePath as Shake
@@ -53,9 +56,11 @@ buildSite = do
 
 buildRules :: Rules ()
 buildRules = do
+  home
   assets
   pages
   posts
+  rss
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
@@ -96,6 +101,27 @@ posts = map indexHtmlOutputPath postGlobs |%> \target -> do
   let page = Page (postTitle post) postHtml
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
+
+home :: Rules ()
+home = outputDir </> "index.html" %> \target -> do
+  postPaths <- Shake.getDirectoryFiles "" postGlobs
+  posts <- take 3
+    . sortOn (Ord.Down . postDate)
+    <$> forM postPaths readPost
+  html <- applyTemplate "home.html" $ HM.singleton "posts" posts
+
+  let page = Page (T.pack "Home") html
+  applyTemplateAndWrite "default.html" page target
+  Shake.putInfo $ "Built " <> target
+
+rss :: Rules ()
+rss = outputDir </> "index.xml" %> \target -> do
+    postPaths <- Shake.getDirectoryFiles "" postGlobs
+    posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
+    -- figure out how to convert this into applyTemplateAndWrite
+    feed <- applyTemplate "feed.xml" $ HM.singleton "posts" posts
+    
+    Shake.putInfo $ "Built " <> target
 
 readPost :: FilePath -> Action Post
 readPost postPath = do
