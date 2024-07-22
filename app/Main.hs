@@ -1,5 +1,6 @@
 -- pulling heavily from https://abhinavsarkar.net/posts/static-site-generator-using-shake/
 -- docs:
+-- https://hackage.haskell.org/package/shake-0.19.8/docs/doc-index-All.html
 -- https://hackage.haskell.org/package/pandoc-3.2.1/docs/doc-index-All.html
 -- https://hackage.haskell.org/package/mustache-2.4.2/docs/doc-index.html
 --
@@ -31,7 +32,7 @@ main = Shake.shakeArgs Shake.shakeOptions $ do
     "build" ~> buildSite
   Shake.withTargetDocs "Clean the built site" $
     "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
-
+  Shake.withoutTargets buildRules
 
 buildSite :: Action ()
 buildSite = do

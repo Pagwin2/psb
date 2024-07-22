@@ -18,7 +18,7 @@ indexHtmlOutputPath srcPath =
 
 indexHtmlSourcePath :: FilePath -> FilePath
 indexHtmlSourcePath =
-  Shake.dropDirectory1
+   Shake.dropDirectory1
     . (<.> "typ")
     . Shake.dropTrailingPathSeparator
     . Shake.dropFileName
