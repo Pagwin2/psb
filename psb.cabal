@@ -62,7 +62,7 @@ executable psb
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: Config Utilities Templates
+    other-modules: Config Utilities Templates Types
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

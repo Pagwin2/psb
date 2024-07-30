@@ -1,6 +1,7 @@
-{-# LANGUAGE ApplicativeDo, DataKinds, DeriveGeneric #-}
+{-# LANGUAGE ApplicativeDo, DataKinds, NamedFieldPuns #-}
 {-# LANGUAGE DerivingVia, LambdaCase, TypeApplications #-}
 module Utilities where
+
 import Data.Text (Text)
 import Development.Shake.FilePath ((<.>), (</>))
 import qualified Data.Text as T
@@ -11,6 +12,9 @@ import Config
 import Development.Shake (Action)
 import Text.Pandoc 
 import Data.Aeson as A
+import Data.Time (UTCTime(UTCTime), formatTime, defaultTimeLocale, parseTimeM)
+import Types
+import Data.Maybe (fromJust)
 
 indexHtmlOutputPath :: FilePath -> FilePath
 indexHtmlOutputPath srcPath =
@@ -23,14 +27,15 @@ indexHtmlSourcePath =
     . Shake.dropTrailingPathSeparator
     . Shake.dropFileName
 
-typstToHtml :: FromJSON a => FilePath -> Action (a, Text)
+typstToHtml :: FilePath -> Action (Post, Text)
 typstToHtml filePath = do
   content <- Shake.readFile' filePath
   Shake.quietly . Shake.traced "Typst to HTML" $ do
     doc@(Pandoc meta _) <- runPandoc . Pandoc.readTypst readerOptions . T.pack $ content
     meta' <- fromMeta meta
+    let dateTransformedMeta = dateTransform meta'
     html <- runPandoc . Pandoc.writeHtml5String writerOptions $ doc
-    return (meta', html)
+    return (fromJust dateTransformedMeta, html)
   where
     readerOptions =
       Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
@@ -54,3 +59,11 @@ typstToHtml filePath = do
     runPandoc action =
           Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
             >>= either (fail . show) return
+    dateTransform post@(Post{postDate}) = do
+        postDate' <- dateStrTransform $ T.unpack $ fromJust postDate
+        Just post {
+            postDate = Just postDate'
+        }
+    dateStrTransform date = do 
+        date' <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" date
+        Just $ T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date'
