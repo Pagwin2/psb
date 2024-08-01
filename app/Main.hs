@@ -4,8 +4,6 @@
 -- https://hackage.haskell.org/package/pandoc-3.2.1/docs/doc-index-All.html
 -- https://hackage.haskell.org/package/mustache-2.4.2/docs/doc-index.html
 --
-{-# LANGUAGE ApplicativeDo, DataKinds, DeriveGeneric #-}
-{-# LANGUAGE DerivingVia, TypeApplications #-}
 
 module Main where
 
@@ -70,8 +68,9 @@ assets = map (outputDir </>) assetGlobs |%> \target -> do
 pages :: Rules ()
 pages = map indexHtmlOutputPath pagePaths |%> \target -> do
   let src = indexHtmlSourcePath target
-  (meta, html) <- typstToHtml src
-
+  let metaSrc = indexHtmlMetaPath target
+  html <- typstToHtml src
+  meta <- yamlToPost metaSrc
   let page = Page (postTitle meta) html
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
@@ -102,15 +101,14 @@ rss :: Rules ()
 rss = outputDir </> "index.xml" %> \target -> do
     postPaths <- Shake.getDirectoryFiles "" postGlobs
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    -- figure out how to convert this into applyTemplateAndWrite
-    feed <- applyTemplate "feed.xml" $ HM.singleton "posts" posts
+    applyTemplateAndWrite "feed.xml" (HM.singleton "posts" posts) target
     
     Shake.putInfo $ "Built " <> target
 
 readPost :: FilePath -> Action Post
 readPost postPath = do
-  (post, html) <- typstToHtml postPath
-  Shake.putInfo $ show post
+  html <- typstToHtml postPath
+  post <- yamlToPost $ typstMetaPath postPath
   Shake.putInfo $ "Read " <> postPath
   return $ post
     { 

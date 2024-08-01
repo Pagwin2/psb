@@ -1,6 +1,3 @@
-{-# LANGUAGE ApplicativeDo, DataKinds, DeriveGeneric #-}
-{-# LANGUAGE DerivingVia, TypeApplications #-}
-
 module Types where
 
 import Deriving.Aeson

@@ -65,10 +65,10 @@ executable psb
     other-modules: Config Utilities Templates Types
 
     -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
+    default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1, mustache ^>=2.4.2, pandoc ^>=3.2.1, shake ^>= 0.19.8, deriving-aeson ^>= 0.2.9, aeson, text, time, unordered-containers
+    build-depends:    base ^>=4.17.2.1, mustache ^>=2.4.2, pandoc ^>=3.2.1, shake ^>= 0.19.8, deriving-aeson ^>= 0.2.9, aeson, text, time, unordered-containers, yaml
 
     -- Directories containing source files.
     hs-source-dirs:   app

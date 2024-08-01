@@ -1,20 +1,17 @@
-{-# LANGUAGE ApplicativeDo, DataKinds, NamedFieldPuns #-}
-{-# LANGUAGE DerivingVia, LambdaCase, TypeApplications #-}
 module Utilities where
 
 import Data.Text (Text)
 import Development.Shake.FilePath ((<.>), (</>))
 import qualified Data.Text as T
+import Data.Yaml.Aeson
 import qualified Development.Shake as Shake
 import qualified Development.Shake.FilePath as Shake
 import qualified Text.Pandoc as Pandoc
 import Config
 import Development.Shake (Action)
-import Text.Pandoc 
-import Data.Aeson as A
-import Data.Time (UTCTime(UTCTime), formatTime, defaultTimeLocale, parseTimeM)
 import Types
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe)
+import Data.Time
 
 indexHtmlOutputPath :: FilePath -> FilePath
 indexHtmlOutputPath srcPath =
@@ -27,42 +24,40 @@ indexHtmlSourcePath =
     . Shake.dropTrailingPathSeparator
     . Shake.dropFileName
 
-typstToHtml :: FilePath -> Action (Post, Text)
+indexHtmlMetaPath :: FilePath -> FilePath
+indexHtmlMetaPath = typstMetaPath . indexHtmlSourcePath
+
+typstMetaPath :: FilePath -> FilePath
+typstMetaPath typstPath = Shake.dropExtension typstPath <.> "yaml"
+
+
+typstToHtml :: FilePath -> Action Text
 typstToHtml filePath = do
   content <- Shake.readFile' filePath
   Shake.quietly . Shake.traced "Typst to HTML" $ do
-    doc@(Pandoc meta _) <- runPandoc . Pandoc.readTypst readerOptions . T.pack $ content
-    meta' <- fromMeta meta
-    let dateTransformedMeta = dateTransform meta'
+    doc <- runPandoc . Pandoc.readTypst readerOptions . T.pack $ content
     html <- runPandoc . Pandoc.writeHtml5String writerOptions $ doc
-    return (fromJust dateTransformedMeta, html)
+    return html
   where
     readerOptions =
       Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
     writerOptions =
       Pandoc.def {Pandoc.writerExtensions = Pandoc.pandocExtensions}
-    fromMeta (Meta meta) =
-          A.fromJSON . A.toJSON <$> traverse metaValueToJSON meta >>= \case
-            Success res -> pure res
-            Error err -> fail $ "json conversion error:" <> err
-    metaValueToJSON = \case
-          MetaMap m -> A.toJSON <$> traverse metaValueToJSON m
-          MetaList m -> A.toJSONList <$> traverse metaValueToJSON m
-          MetaBool m -> pure $ A.toJSON m
-          MetaString m -> pure $ A.toJSON $ T.strip m
-          MetaInlines m -> metaValueToJSON $ MetaBlocks [Plain m]
-          MetaBlocks m ->
-            fmap (A.toJSON . T.strip)
-              . runPandoc
-              . Pandoc.writePlain Pandoc.def
-              $ Pandoc mempty m
     runPandoc action =
           Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
             >>= either (fail . show) return
+
+yamlToPost :: FilePath -> Action Post
+yamlToPost path = do
+    post <- decodeFileThrow path
+    let post' = dateTransform post
+    return $ fromMaybe post post'
+    where
     dateTransform post@(Post{postDate}) = do
-        postDate' <- dateStrTransform $ T.unpack $ fromJust postDate
+        postDate' <- postDate
+        let postDate'' =  dateStrTransform $ T.unpack postDate'
         Just post {
-            postDate = Just postDate'
+            postDate = postDate''
         }
     dateStrTransform date = do 
         date' <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" date

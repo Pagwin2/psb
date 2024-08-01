@@ -1,6 +1,3 @@
-{-# LANGUAGE ApplicativeDo, DataKinds, DeriveGeneric #-}
-{-# LANGUAGE DerivingVia, LambdaCase, TypeApplications #-}
-
 module Templates where
 import Development.Shake
 import Data.Aeson (ToJSON)
