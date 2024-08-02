@@ -4,7 +4,7 @@ outputDir :: String
 outputDir = "publish"
 
 assetGlobs :: [String]
-assetGlobs = ["static/*"]
+assetGlobs = ["static//*"]
 
 pagePaths :: [String]
 pagePaths = ["links.typ"]

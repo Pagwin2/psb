@@ -60,7 +60,7 @@ buildRules = do
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
 assets = map (outputDir </>) assetGlobs |%> \target -> do
-  let src = Shake.dropDirectory1 target </> "pages"
+  let src = Shake.dropDirectory1 target
   Shake.copyFileChanged src target
   Shake.putInfo $ "Copied " <> target <> " from " <> src
 
