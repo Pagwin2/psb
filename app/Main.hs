@@ -54,7 +54,8 @@ buildRules = do
   home
   assets
   pages
-  postsRule
+  typstPostsRule
+  markdownPostsRule
   rss
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
@@ -75,10 +76,20 @@ pages = map indexHtmlOutputPath pagePaths |%> \target -> do
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
 
-postsRule :: Rules ()
-postsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
+typstPostsRule :: Rules ()
+typstPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
   let src = indexHtmlSourcePath target
-  post <- readPost src
+  post <- readTypstPost src
+  postHtml <- applyTemplate "post.html" post
+
+  let page = Page (postTitle post) postHtml
+  applyTemplateAndWrite "default.html" page target
+  Shake.putInfo $ "Built " <> target <> " from " <> src
+
+markdownPostsRule :: Rules ()
+markdownPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
+  let src = indexHtmlSourcePath target
+  post <- readMarkdownPost src
   postHtml <- applyTemplate "post.html" post
 
   let page = Page (postTitle post) postHtml
@@ -105,8 +116,8 @@ rss = outputDir </> "index.xml" %> \target -> do
     
     Shake.putInfo $ "Built " <> target
 
-readPost :: FilePath -> Action Post
-readPost postPath = do
+readTypstPost :: FilePath -> Action Post
+readTypstPost postPath = do
   html <- typstToHtml postPath
   post <- yamlToPost $ typstMetaPath postPath
   Shake.putInfo $ "Read " <> postPath
@@ -116,3 +127,17 @@ readPost postPath = do
       postLink = Just . T.pack $ "/" <> Shake.dropExtension postPath <> "/"
     }
 
+readMarkdownPost :: FilePath -> Action Post
+readMarkdownPost postPath = do
+    date <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d"
+        . take 10
+        . Shake.takeBaseName
+        $ postPath
+    let formattedDate = T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date
+    (post, html) <- markdownToHtml postPath
+    Shake.putInfo $ "Read " <> postPath
+    return $ post
+        { postDate = Just formattedDate,
+        postContent = Just html,
+        postLink = Just . T.pack $ "/" <> Shake.dropExtension postPath <> "/"
+        }

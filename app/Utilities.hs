@@ -12,6 +12,9 @@ import Development.Shake (Action)
 import Types
 import Data.Maybe (fromMaybe)
 import Data.Time
+import Text.Pandoc (Block (Plain), Meta (..), MetaValue (..), Pandoc (..))
+import Data.Aeson (Result(Success, Error))
+import qualified Data.Aeson as A
 
 indexHtmlOutputPath :: FilePath -> FilePath
 indexHtmlOutputPath srcPath =
@@ -43,9 +46,40 @@ typstToHtml filePath = do
       Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
     writerOptions =
       Pandoc.def {Pandoc.writerExtensions = Pandoc.pandocExtensions}
-    runPandoc action =
-          Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
-            >>= either (fail . show) return
+markdownToHtml :: FromJSON a => FilePath -> Action (a, Text)
+markdownToHtml filePath = do
+  content <- Shake.readFile' filePath
+  Shake.quietly . Shake.traced "Markdown to HTML" $ do
+    pandoc@(Pandoc meta _) <-
+      runPandoc . Pandoc.readMarkdown readerOptions . T.pack $ content
+    meta' <- fromMeta meta
+    html <- runPandoc . Pandoc.writeHtml5String writerOptions $ pandoc
+    return (meta', html)
+  where
+    readerOptions =
+      Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
+    writerOptions =
+      Pandoc.def {Pandoc.writerExtensions = Pandoc.pandocExtensions}
+    fromMeta (Meta meta) =
+      A.fromJSON . A.toJSON <$> traverse metaValueToJSON meta >>= \case
+        Success res -> pure res
+        Error err -> fail $ "json conversion error:" <> err
+    metaValueToJSON = \case
+      MetaMap m -> A.toJSON <$> traverse metaValueToJSON m
+      MetaList m -> A.toJSONList <$> traverse metaValueToJSON m
+      MetaBool m -> pure $ A.toJSON m
+      MetaString m -> pure $ A.toJSON $ T.strip m
+      MetaInlines m -> metaValueToJSON $ MetaBlocks [Plain m]
+      MetaBlocks m ->
+        fmap (A.toJSON . T.strip)
+          . runPandoc
+          . Pandoc.writePlain Pandoc.def
+          $ Pandoc mempty m
+
+runPandoc :: Pandoc.PandocIO b -> IO b
+runPandoc action =
+      Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
+        >>= either (fail . show) return
 
 yamlToPost :: FilePath -> Action Post
 yamlToPost path = do
