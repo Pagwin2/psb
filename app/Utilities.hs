@@ -109,3 +109,9 @@ yamlToPost path = do
     dateStrTransform date = do 
         date' <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" date
         Just $ T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date'
+
+isTypstPost :: FilePath -> Bool
+isTypstPost path = Shake.takeExtension path == ".typ"
+
+isMarkdownPost :: FilePath -> Bool
+isMarkdownPost path = Shake.takeExtension path == ".md"

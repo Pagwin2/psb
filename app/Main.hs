@@ -7,7 +7,7 @@
 
 module Main where
 
-import Control.Monad (forM)
+import Control.Monad (forM, when)
 import Data.List (sortOn)
 import Development.Shake (Action, Rules, (|%>), (~>), (%>))
 import Development.Shake.FilePath ((</>))
@@ -15,7 +15,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Ord as Ord
 import qualified Data.Text as T
 import qualified Development.Shake as Shake
-import qualified Development.Shake.FilePath as Shake
+import qualified Development.Shake.FilePath as FP
 import Config
 import Types
 import Utilities
@@ -26,12 +26,13 @@ import Data.Time
 -- Action = actions to produce a thing
 
 main :: IO ()
-main = Shake.shakeArgs Shake.shakeOptions $ do
-  Shake.withTargetDocs "Build the site" $
-    "build" ~> buildSite
-  Shake.withTargetDocs "Clean the built site" $
-    "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
-  Shake.withoutTargets buildRules
+main = do
+    Shake.shakeArgs Shake.shakeOptions $ do
+      Shake.withTargetDocs "Build the site" $
+        "build" ~> buildSite
+      Shake.withTargetDocs "Clean the built site" $
+        "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
+      Shake.withoutTargets buildRules
 
 buildSite :: Action ()
 buildSite = do
@@ -55,14 +56,13 @@ buildRules = do
   home
   assets
   pages
-  typstPostsRule
-  markdownPostsRule
+  postsRule
   rss
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
 assets = map (outputDir </>) assetGlobs |%> \target -> do
-  let src = Shake.dropDirectory1 target
+  let src = FP.dropDirectory1 target
   Shake.copyFileChanged src target
   Shake.putInfo $ "Copied " <> target <> " from " <> src
 
@@ -77,9 +77,25 @@ pages = map indexHtmlOutputPath pagePaths |%> \target -> do
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
 
-typstPostsRule :: Rules ()
-typstPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
-  let src = indexHtmlTypstSourcePath target
+-- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
+postsRule :: Rules ()
+postsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
+    let potentials = indexHtmlSourcePaths target
+    Shake.forP potentials (\path->do 
+        exists <- Shake.doesFileExist path
+        when exists
+            (case FP.takeExtension path of
+                ".typ" -> typstPost path
+                ".md" -> markdownPost path
+                _ -> error $ "invalid file extension for post " <> target)
+        )
+    return ()
+    
+typstPost :: FP.FilePath -> Action ()
+typstPost src = do
+  Shake.need [src]
+  let target = indexHtmlOutputPath src
+
   post <- readTypstPost src
   postHtml <- applyTemplate "post.html" post
 
@@ -87,9 +103,12 @@ typstPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
 
-markdownPostsRule :: Rules ()
-markdownPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
-  let src = indexHtmlMarkdownSourcePath target
+
+markdownPost :: FP.FilePath -> Action ()
+markdownPost src = do
+  Shake.need [src]
+  let target = indexHtmlOutputPath src
+
   post <- readMarkdownPost src
   postHtml <- applyTemplate "post.html" post
 
@@ -119,7 +138,7 @@ rss = outputDir </> "index.xml" %> \target -> do
 
 readPost :: FilePath -> Action Post
 readPost postPath = do
-    case Shake.takeExtension postPath of
+    case FP.takeExtension postPath of
         ".typ" -> readTypstPost postPath
         ".md"  -> readMarkdownPost postPath
         _ -> error $ "unknown file extension for file" <> postPath
@@ -132,20 +151,15 @@ readTypstPost postPath = do
   return $ post
     { 
       postContent = Just html,
-      postLink = Just . T.pack $ "/" <> Shake.dropExtension postPath <> "/"
+      postLink = Just . T.pack $ "/" <> FP.dropExtension postPath <> "/"
     }
 
 readMarkdownPost :: FilePath -> Action Post
 readMarkdownPost postPath = do
-    date <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d"
-        . take 10
-        . Shake.takeBaseName
-        $ postPath
-    let formattedDate = T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date
     (post, html) <- markdownToHtml postPath
     Shake.putInfo $ "Read " <> postPath
     return $ post
-        { postDate = Just formattedDate,
-        postContent = Just html,
-        postLink = Just . T.pack $ "/" <> Shake.dropExtension postPath <> "/"
+        { 
+            postContent = Just html,
+            postLink = Just . T.pack $ "/" <> FP.dropExtension postPath <> "/"
         }
