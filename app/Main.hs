@@ -20,6 +20,7 @@ import Config
 import Types
 import Utilities
 import Templates
+import Data.Time
 -- target = thing we want
 -- Rule = pattern of thing being made + actions to produce the thing
 -- Action = actions to produce a thing
@@ -68,8 +69,8 @@ assets = map (outputDir </>) assetGlobs |%> \target -> do
 
 pages :: Rules ()
 pages = map indexHtmlOutputPath pagePaths |%> \target -> do
-  let src = indexHtmlSourcePath target
-  let metaSrc = indexHtmlMetaPath target
+  let src = indexHtmlTypstSourcePath target
+  let metaSrc = indexHtmlTypstMetaPath target
   html <- typstToHtml src
   meta <- yamlToPost metaSrc
   let page = Page (postTitle meta) html
@@ -78,7 +79,7 @@ pages = map indexHtmlOutputPath pagePaths |%> \target -> do
 
 typstPostsRule :: Rules ()
 typstPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
-  let src = indexHtmlSourcePath target
+  let src = indexHtmlTypstSourcePath target
   post <- readTypstPost src
   postHtml <- applyTemplate "post.html" post
 
@@ -88,7 +89,7 @@ typstPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
 
 markdownPostsRule :: Rules ()
 markdownPostsRule = map indexHtmlOutputPath postGlobs |%> \target -> do
-  let src = indexHtmlSourcePath target
+  let src = indexHtmlMarkdownSourcePath target
   post <- readMarkdownPost src
   postHtml <- applyTemplate "post.html" post
 
@@ -115,6 +116,13 @@ rss = outputDir </> "index.xml" %> \target -> do
     applyTemplateAndWrite "feed.xml" (HM.singleton "posts" posts) target
     
     Shake.putInfo $ "Built " <> target
+
+readPost :: FilePath -> Action Post
+readPost postPath = do
+    case Shake.takeExtension postPath of
+        ".typ" -> readTypstPost postPath
+        ".md"  -> readMarkdownPost postPath
+        _ -> error $ "unknown file extension for file" <> postPath
 
 readTypstPost :: FilePath -> Action Post
 readTypstPost postPath = do

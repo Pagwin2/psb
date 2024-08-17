@@ -20,15 +20,28 @@ indexHtmlOutputPath :: FilePath -> FilePath
 indexHtmlOutputPath srcPath =
   outputDir </> Shake.dropExtension srcPath </> "index.html"
 
-indexHtmlSourcePath :: FilePath -> FilePath
-indexHtmlSourcePath =
-   Shake.dropDirectory1
+
+-- were applicative shenanigans necessary? no
+-- but using them felt cool
+indexHtmlSourcePaths :: FilePath -> [FilePath]
+indexHtmlSourcePaths path = [indexHtmlTypstSourcePath, indexHtmlMarkdownSourcePath] <*> [path]
+
+indexHtmlTypstSourcePath :: FilePath -> FilePath
+indexHtmlTypstSourcePath = 
+    Shake.dropDirectory1
     . (<.> "typ")
     . Shake.dropTrailingPathSeparator
     . Shake.dropFileName
 
-indexHtmlMetaPath :: FilePath -> FilePath
-indexHtmlMetaPath = typstMetaPath . indexHtmlSourcePath
+indexHtmlMarkdownSourcePath :: FilePath -> FilePath
+indexHtmlMarkdownSourcePath =
+    Shake.dropDirectory1
+    . (<.> "md")
+    . Shake.dropTrailingPathSeparator
+    . Shake.dropFileName
+
+indexHtmlTypstMetaPath :: FilePath -> FilePath
+indexHtmlTypstMetaPath = typstMetaPath . indexHtmlTypstSourcePath
 
 typstMetaPath :: FilePath -> FilePath
 typstMetaPath typstPath = Shake.dropExtension typstPath <.> "yaml"
