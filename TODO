@@ -1,9 +1,11 @@
-make this work with markdown to save on effort moving over the old posts
-
-make the date format ISO
+make the date format ISO?
 
 make separate blog list page target
 
 add draft attr
 
 github action for docker image/deploy
+
+make it so articles without tags don't mention them
+
+see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
