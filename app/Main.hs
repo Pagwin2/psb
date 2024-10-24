@@ -105,7 +105,8 @@ typstPost src = do
   let target = indexHtmlOutputPath src
 
   post <- readTypstPost src
-  postHtml <- applyTemplate "post.html" post
+  let rPost = fromPost post
+  postHtml <- applyTemplate "post.html" rPost
 
   let page = Page (postTitle post) postHtml
   applyTemplateAndWrite "default.html" page target
@@ -117,7 +118,9 @@ markdownPost src = do
   let target = indexHtmlOutputPath src
 
   post <- readMarkdownPost src
-  postHtml <- applyTemplate "post.html" post
+  let rPost = fromPost post
+  -- Shake.putInfo $ show . toJSON $ rPost
+  postHtml <- applyTemplate "post.html" rPost
 
   let page = Page (postTitle post) postHtml
   applyTemplateAndWrite "default.html" page target

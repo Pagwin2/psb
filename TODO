@@ -4,8 +4,10 @@ make separate blog list page target
 
 add draft attr
 
+add description attr
+
 github action for docker image/deploy
 
-make it so articles without tags don't mention them
-
 see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
+
+minify js and css when copying over instead of just copying
