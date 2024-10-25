@@ -1,4 +1,6 @@
-make the date format ISO?
+make the date format ISO (Markdown seems fine, just need typst)?
+
+make typst dependant on yaml?
 
 make separate blog list page target
 
@@ -6,7 +8,7 @@ add draft attr
 
 add description attr
 
-github action for docker image/deploy
+github action for deploy to github pages
 
 see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
 
