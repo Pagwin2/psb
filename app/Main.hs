@@ -49,6 +49,9 @@ buildSite = do
   postPaths <- Shake.getDirectoryFiles "" postGlobs
   Shake.need $ map indexHtmlOutputPath postPaths
 
+  -- posts list
+  Shake.need [indexHtmlOutputPath "posts"]
+
   -- remaining pages, index.xml = rss feed
   Shake.need $ map (outputDir </>) ["index.html", "index.xml"]
 
@@ -58,6 +61,7 @@ buildRules = do
   assets
   pages
   postsRule
+  postList
   rss
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
@@ -139,6 +143,13 @@ home =
     let page = Page (T.pack "Home") html
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target
+
+postList :: Rules ()
+postList =
+  outputDir </> "posts/index.html" %> \target -> do
+    postPaths <- Shake.getDirectoryFiles "" postGlobs
+    posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
+    applyTemplateAndWrite "posts.html" (HM.singleton "posts" posts) target
 
 rss :: Rules ()
 rss =
