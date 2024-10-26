@@ -2,7 +2,7 @@ make the date format ISO (Markdown seems fine, just need typst)?
 
 make typst dependant on yaml?
 
-make separate blog list page target
+make page url available
 
 add draft attr
 
