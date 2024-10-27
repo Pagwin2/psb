@@ -149,7 +149,10 @@ postList =
   outputDir </> "posts/index.html" %> \target -> do
     postPaths <- Shake.getDirectoryFiles "" postGlobs
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    applyTemplateAndWrite "posts.html" (HM.singleton "posts" posts) target
+    html <- applyTemplate "posts.html" $ HM.singleton "posts" posts
+    let page = Page (T.pack "Blog Posts") html
+    applyTemplateAndWrite "default.html" page target
+    Shake.putInfo $ "Built " <> target
 
 rss :: Rules ()
 rss =
