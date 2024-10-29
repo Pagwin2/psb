@@ -2,14 +2,20 @@ make the date format ISO (Markdown seems fine, just need typst)?
 
 make typst dependant on yaml?
 
-make page url available
-
 add draft attr
 
 add description attr
 
 github action for deploy to github pages
 
-see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
-
 minify js and css when copying over instead of just copying
+
+Check to see if pandoc html output can be changed somehow
+https://hackage.haskell.org/package/pandoc-3.5/docs/Text-Pandoc-Writers.html#t:Writer
+HXT on the generated html is an option
+https://pandoc.org/MANUAL.html#custom-readers-and-writers might be an option https://pandoc.org/lua-filters.html
+most likely will be a generic lua filter though https://pandoc.org/lua-filters.html
+
+
+
+see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
