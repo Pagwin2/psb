@@ -8,12 +8,11 @@
 module Main where
 
 import Config
-import Control.Monad (forM, when)
+import Control.Monad (filterM, forM, when)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
 import qualified Data.Ord as Ord
 import qualified Data.Text as T
-import Data.Time
 import Development.Shake (Action, Rules, (%>), (|%>), (~>))
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((</>))
@@ -47,7 +46,8 @@ buildSite = do
 
   -- handle posts
   postPaths <- Shake.getDirectoryFiles "" postGlobs
-  Shake.need $ map indexHtmlOutputPath postPaths
+  postPaths' <- filterM isDraft postPaths
+  Shake.need $ map indexHtmlOutputPath postPaths'
 
   -- posts list
   Shake.need [indexHtmlOutputPath "posts"]

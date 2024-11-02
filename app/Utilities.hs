@@ -3,6 +3,7 @@ module Utilities where
 import Config
 import Data.Aeson (Result (Error, Success))
 import qualified Data.Aeson as A
+import Data.List (find)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -98,6 +99,34 @@ runPandoc action =
   Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
     >>= either (fail . show) return
 
+markdownToPost :: FilePath -> Action Post
+markdownToPost path = do
+  content <- Shake.readFile' path
+  (Pandoc meta _) <-
+    Shake.liftIO . runPandoc . Pandoc.readMarkdown readerOptions . T.pack $ content
+  Shake.liftIO $ fromMeta meta
+  where
+    readerOptions =
+      Pandoc.def
+        { Pandoc.readerStandalone = True,
+          Pandoc.readerExtensions = Pandoc.enableExtension Pandoc.Ext_yaml_metadata_block Pandoc.pandocExtensions
+        }
+    fromMeta (Meta meta) =
+      A.fromJSON . A.toJSON <$> traverse metaValueToJSON meta >>= \case
+        Success res -> pure res
+        Error err -> fail $ "json conversion error:" <> err
+    metaValueToJSON = \case
+      MetaMap m -> A.toJSON <$> traverse metaValueToJSON m
+      MetaList m -> A.toJSONList <$> traverse metaValueToJSON m
+      MetaBool m -> pure $ A.toJSON m
+      MetaString m -> pure $ A.toJSON $ T.strip m
+      MetaInlines m -> metaValueToJSON $ MetaBlocks [Plain m]
+      MetaBlocks m ->
+        fmap (A.toJSON . T.strip)
+          . runPandoc
+          . Pandoc.writePlain Pandoc.def
+          $ Pandoc mempty m
+
 yamlToPost :: FilePath -> Action Post
 yamlToPost path = do
   post <- decodeFileThrow path
@@ -120,3 +149,15 @@ isTypstPost path = Shake.takeExtension path == ".typ"
 
 isMarkdownPost :: FilePath -> Bool
 isMarkdownPost path = Shake.takeExtension path == ".md"
+
+postHandles :: [(FilePath -> Bool, FilePath -> Action Post)]
+postHandles = [(isTypstPost, yamlToPost . typstMetaPath), (isMarkdownPost, markdownToPost)]
+
+isDraft :: FilePath -> Action Bool
+isDraft path = do
+  let action =
+        case find (\(test, _) -> test path) postHandles of
+          (Just (_, action')) -> action'
+          Nothing -> error "no post handle for this file type"
+  post <- action path
+  return $ postDraft post
