@@ -8,7 +8,7 @@
 module Main where
 
 import Config
-import Control.Monad (filterM, forM, when)
+import Control.Monad (forM, when)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
 import qualified Data.Ord as Ord
@@ -45,9 +45,8 @@ buildSite = do
   Shake.need $ map indexHtmlOutputPath pagePaths
 
   -- handle posts
-  postPaths <- Shake.getDirectoryFiles "" postGlobs
-  postPaths' <- filterM isDraft postPaths
-  Shake.need $ map indexHtmlOutputPath postPaths'
+  postPaths <- getPublishedPosts
+  Shake.need $ map indexHtmlOutputPath postPaths
 
   -- posts list
   Shake.need [indexHtmlOutputPath "posts"]
@@ -93,8 +92,9 @@ postsRule =
       potentials
       ( \path -> do
           exists <- Shake.doesFileExist path
+          should <- if exists then not <$> isDraft path else pure False
           when
-            exists
+            should
             ( case FP.takeExtension path of
                 ".typ" -> typstPost path
                 ".md" -> markdownPost path
@@ -133,7 +133,7 @@ markdownPost src = do
 home :: Rules ()
 home =
   outputDir </> "index.html" %> \target -> do
-    postPaths <- Shake.getDirectoryFiles "" postGlobs
+    postPaths <- getPublishedPosts
     posts <-
       take 3
         . sortOn (Ord.Down . postDate)
@@ -147,7 +147,7 @@ home =
 postList :: Rules ()
 postList =
   outputDir </> "posts/index.html" %> \target -> do
-    postPaths <- Shake.getDirectoryFiles "" postGlobs
+    postPaths <- getPublishedPosts
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
     html <- applyTemplate "posts.html" $ HM.singleton "posts" posts
     let page = Page (T.pack "Blog Posts") html
@@ -157,7 +157,7 @@ postList =
 rss :: Rules ()
 rss =
   outputDir </> "index.xml" %> \target -> do
-    postPaths <- Shake.getDirectoryFiles "" postGlobs
+    postPaths <- getPublishedPosts
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
     applyTemplateAndWrite "feed.xml" (HM.singleton "posts" posts) target
 

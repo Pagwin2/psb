@@ -27,7 +27,7 @@ data Post = Post
     postDate :: Maybe Text,
     postContent :: Maybe Text,
     postLink :: Maybe Text,
-    postDraft :: Bool
+    postDraft :: Maybe Bool
   }
   deriving (Show, Generic)
   deriving (FromJSON, ToJSON) via PrefixedSnake "post" Post

@@ -1,6 +1,7 @@
 module Utilities where
 
 import Config
+import Control.Monad (filterM)
 import Data.Aeson (Result (Error, Success))
 import qualified Data.Aeson as A
 import Data.List (find)
@@ -12,14 +13,14 @@ import Data.Yaml.Aeson
 import Development.Shake (Action)
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((<.>), (</>))
-import qualified Development.Shake.FilePath as Shake
+import qualified Development.Shake.FilePath as FP
 import Text.Pandoc (Block (Plain), Meta (..), MetaValue (..), Pandoc (..))
 import qualified Text.Pandoc as Pandoc
 import Types
 
 indexHtmlOutputPath :: FilePath -> FilePath
 indexHtmlOutputPath srcPath =
-  outputDir </> Shake.dropExtension srcPath </> "index.html"
+  outputDir </> FP.dropExtension srcPath </> "index.html"
 
 -- were applicative shenanigans necessary? no
 -- but using them felt cool
@@ -28,23 +29,23 @@ indexHtmlSourcePaths path = [indexHtmlTypstSourcePath, indexHtmlMarkdownSourcePa
 
 indexHtmlTypstSourcePath :: FilePath -> FilePath
 indexHtmlTypstSourcePath =
-  Shake.dropDirectory1
+  FP.dropDirectory1
     . (<.> "typ")
-    . Shake.dropTrailingPathSeparator
-    . Shake.dropFileName
+    . FP.dropTrailingPathSeparator
+    . FP.dropFileName
 
 indexHtmlMarkdownSourcePath :: FilePath -> FilePath
 indexHtmlMarkdownSourcePath =
-  Shake.dropDirectory1
+  FP.dropDirectory1
     . (<.> "md")
-    . Shake.dropTrailingPathSeparator
-    . Shake.dropFileName
+    . FP.dropTrailingPathSeparator
+    . FP.dropFileName
 
 indexHtmlTypstMetaPath :: FilePath -> FilePath
 indexHtmlTypstMetaPath = typstMetaPath . indexHtmlTypstSourcePath
 
 typstMetaPath :: FilePath -> FilePath
-typstMetaPath typstPath = Shake.dropExtension typstPath <.> "yaml"
+typstMetaPath typstPath = FP.dropExtension typstPath <.> "yaml"
 
 typstToHtml :: FilePath -> Action Text
 typstToHtml filePath = do
@@ -145,10 +146,10 @@ yamlToPost path = do
       Just $ T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date'
 
 isTypstPost :: FilePath -> Bool
-isTypstPost path = Shake.takeExtension path == ".typ"
+isTypstPost path = FP.takeExtension path == ".typ"
 
 isMarkdownPost :: FilePath -> Bool
-isMarkdownPost path = Shake.takeExtension path == ".md"
+isMarkdownPost path = FP.takeExtension path == ".md"
 
 postHandles :: [(FilePath -> Bool, FilePath -> Action Post)]
 postHandles = [(isTypstPost, yamlToPost . typstMetaPath), (isMarkdownPost, markdownToPost)]
@@ -160,4 +161,11 @@ isDraft path = do
           (Just (_, action')) -> action'
           Nothing -> error "no post handle for this file type"
   post <- action path
-  return $ postDraft post
+  return $ case postDraft post of
+    Just ret -> ret
+    Nothing -> (error $ "Missing draft attr: " ++ path)
+
+getPublishedPosts :: Action [FilePath]
+getPublishedPosts = do
+  postPaths <- Shake.getDirectoryFiles "" postGlobs
+  filterM (fmap not . isDraft) postPaths
