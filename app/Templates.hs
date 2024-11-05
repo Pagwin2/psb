@@ -10,7 +10,7 @@ import Development.Shake.FilePath ((</>))
 import GHC.Stack (HasCallStack)
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
-import Types (Post (postAuthor, postContent, postDate, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostLink, rPostTags, rPostTitle))
+import Types (Post (postAuthor, postContent, postDate, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostIsoDate, rPostLink, rPostTags, rPostTitle))
 
 applyTemplate :: (HasCallStack, (ToJSON a)) => String -> a -> Action Text
 applyTemplate templateName context = do
@@ -51,6 +51,7 @@ fromPost post =
       rPostTags = postTags post,
       rPostHasTags = not . null . postTags $ post,
       rPostDate = postDate post,
+      rPostIsoDate = postDate post,
       rPostContent = postContent post,
       rPostLink = postLink post
     }

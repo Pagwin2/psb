@@ -131,8 +131,8 @@ markdownToPost path = do
 yamlToPost :: FilePath -> Action Post
 yamlToPost path = do
   post <- decodeFileThrow path
-  let post' = dateTransform post
-  return $ fromMaybe post post'
+  -- let post' = dateTransform post
+  return post
   where
     dateTransform post@(Post {postDate}) = do
       postDate' <- postDate

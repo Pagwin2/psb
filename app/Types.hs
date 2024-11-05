@@ -14,6 +14,7 @@ data RenderedPost = RenderedPost
     rPostTags :: [Text],
     rPostHasTags :: Bool,
     rPostDate :: Maybe Text,
+    rPostIsoDate :: Maybe Text,
     rPostContent :: Maybe Text,
     rPostLink :: Maybe Text
   }
