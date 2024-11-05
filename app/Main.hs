@@ -138,8 +138,8 @@ home =
       take 3
         . sortOn (Ord.Down . postDate)
         <$> forM postPaths readPost
-    html <- applyTemplate "home.html" $ HM.singleton "posts" posts
-
+    let posts' = map fromPost posts
+    html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
     let page = Page (T.pack "Home") html
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target
@@ -149,7 +149,8 @@ postList =
   outputDir </> "posts/index.html" %> \target -> do
     postPaths <- getPublishedPosts
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    html <- applyTemplate "posts.html" $ HM.singleton "posts" posts
+    let posts' = map fromPost posts
+    html <- applyTemplate "posts.html" $ HM.singleton "posts" posts'
     let page = Page (T.pack "Blog Posts") html
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target

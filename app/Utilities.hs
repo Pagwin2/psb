@@ -5,7 +5,6 @@ import Control.Monad (filterM)
 import Data.Aeson (Result (Error, Success))
 import qualified Data.Aeson as A
 import Data.List (find)
-import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
@@ -133,17 +132,6 @@ yamlToPost path = do
   post <- decodeFileThrow path
   -- let post' = dateTransform post
   return post
-  where
-    dateTransform post@(Post {postDate}) = do
-      postDate' <- postDate
-      let postDate'' = dateStrTransform $ T.unpack postDate'
-      Just
-        post
-          { postDate = postDate''
-          }
-    dateStrTransform date = do
-      date' <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" date
-      Just $ T.pack $ formatTime @UTCTime defaultTimeLocale "%b %e, %Y" date'
 
 isTypstPost :: FilePath -> Bool
 isTypstPost path = FP.takeExtension path == ".typ"
@@ -169,3 +157,8 @@ getPublishedPosts :: Action [FilePath]
 getPublishedPosts = do
   postPaths <- Shake.getDirectoryFiles "" postGlobs
   filterM (fmap not . isDraft) postPaths
+
+parseDate :: Text -> Maybe Text
+parseDate str = do
+  date <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" $ T.unpack str
+  return $ T.pack $ formatTime @UTCTime defaultTimeLocale "%Y-%m-%d" date

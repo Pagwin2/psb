@@ -11,10 +11,12 @@ import GHC.Stack (HasCallStack)
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
 import Types (Post (postAuthor, postContent, postDate, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostIsoDate, rPostLink, rPostTags, rPostTitle))
+import Utilities
 
 applyTemplate :: (HasCallStack, (ToJSON a)) => String -> a -> Action Text
 applyTemplate templateName context = do
   tmpl <- readTemplate $ "templates" </> templateName
+  -- liftIO $ print $ A.toJSON context
   case Mus.checkedSubstitute tmpl (A.toJSON context) of
     ([], text) -> return text
     (errs, _) ->
@@ -51,7 +53,7 @@ fromPost post =
       rPostTags = postTags post,
       rPostHasTags = not . null . postTags $ post,
       rPostDate = postDate post,
-      rPostIsoDate = postDate post,
+      rPostIsoDate = postDate post >>= parseDate,
       rPostContent = postContent post,
       rPostLink = postLink post
     }
