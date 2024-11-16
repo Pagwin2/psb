@@ -161,4 +161,5 @@ getPublishedPosts = do
 parseDate :: Text -> Maybe Text
 parseDate str = do
   date <- parseTimeM False defaultTimeLocale "%Y-%-m-%-d" $ T.unpack str
-  return $ T.pack $ formatTime @UTCTime defaultTimeLocale "%Y-%m-%d" date
+  -- need to append the time to avoid potential issues
+  return $ T.pack $ formatTime @UTCTime defaultTimeLocale "%Y-%m-%dT00:00:00Z" date

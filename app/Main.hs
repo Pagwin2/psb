@@ -160,6 +160,7 @@ rss =
   outputDir </> "index.xml" %> \target -> do
     postPaths <- getPublishedPosts
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
+    -- TODO: change this to actually have it's own type for things like updated
     applyTemplateAndWrite "feed.xml" (HM.singleton "posts" posts) target
 
     Shake.putInfo $ "Built " <> target

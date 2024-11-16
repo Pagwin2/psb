@@ -4,7 +4,8 @@ import Data.Text (Text)
 import Deriving.Aeson
 import Deriving.Aeson.Stock (PrefixedSnake)
 
-data Page = Page {pageTitle :: Text, pageContent :: Text}
+-- pageSection is what css class should be specified in a style html element, I would do an enum but I foresee that being a mistake
+data Page = Page {pageTitle :: Text, pageContent :: Text, pageNow :: Text, pageSection :: Text}
   deriving (Show, Generic)
   deriving (ToJSON) via PrefixedSnake "page" Page
 
@@ -16,7 +17,9 @@ data RenderedPost = RenderedPost
     rPostDate :: Maybe Text,
     rPostIsoDate :: Maybe Text,
     rPostContent :: Maybe Text,
-    rPostLink :: Maybe Text
+    rPostLink :: Maybe Text,
+    rPostSummary :: Maybe Text,
+    rPostId :: Text
   }
   deriving (Show, Generic)
   deriving (FromJSON, ToJSON) via PrefixedSnake "rPost" RenderedPost
@@ -28,6 +31,7 @@ data Post = Post
     postDate :: Maybe Text,
     postContent :: Maybe Text,
     postLink :: Maybe Text,
+    postSummary :: Maybe Text,
     postDraft :: Maybe Bool
   }
   deriving (Show, Generic)
