@@ -10,7 +10,7 @@ import Development.Shake.FilePath ((</>))
 import GHC.Stack (HasCallStack)
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
-import Types (Post (postAuthor, postContent, postDate, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostIsoDate, rPostLink, rPostTags, rPostTitle))
+import Types (Post (postAuthor, postContent, postDate, postDescription, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostId, rPostIsoDate, rPostLink, rPostSummary, rPostTags, rPostTitle))
 import Utilities
 
 applyTemplate :: (HasCallStack, (ToJSON a)) => String -> a -> Action Text
@@ -55,5 +55,8 @@ fromPost post =
       rPostDate = postDate post,
       rPostIsoDate = postDate post >>= parseDate,
       rPostContent = postContent post,
-      rPostLink = postLink post
+      rPostLink = postLink post,
+      -- maybe can replace non-acceptable chars with - but unclear is exactly one - is allowed or now https://www.iana.org/assignments/urn-informal/urn-1
+      rPostId = T.pack . ("urn:urn-1:" ++) . filter (\c -> elem c "abcdefghijklmnopqrstuvwxyz0123456789") . T.unpack . T.toLower . postTitle $ post,
+      rPostSummary = postDescription post
     }

@@ -8,6 +8,7 @@ import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Time
+import Data.Time.Format.ISO8601 (iso8601Show)
 import Data.Yaml.Aeson
 import Development.Shake (Action)
 import qualified Development.Shake as Shake
@@ -98,6 +99,9 @@ runPandoc :: Pandoc.PandocIO b -> IO b
 runPandoc action =
   Pandoc.runIO (Pandoc.setVerbosity Pandoc.ERROR >> action)
     >>= either (fail . show) return
+
+now :: Action T.Text
+now = Shake.liftIO $ fmap (T.pack . iso8601Show) getCurrentTime
 
 markdownToPost :: FilePath -> Action Post
 markdownToPost path = do

@@ -11,12 +11,16 @@ import Config
 import Control.Monad (forM, when)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
+import Data.Maybe (fromJust)
 import qualified Data.Ord as Ord
 import qualified Data.Text as T
+import Deriving.Aeson
+import Deriving.Aeson.Stock (Vanilla)
 import Development.Shake (Action, Rules, (%>), (|%>), (~>))
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((</>))
 import qualified Development.Shake.FilePath as FP
+import qualified Development.Shake.FilePath as Shake
 import Templates
 import Types
 import Utilities
@@ -79,7 +83,14 @@ pages =
     let metaSrc = indexHtmlTypstMetaPath target
     html <- typstToHtml src
     meta <- yamlToPost metaSrc
-    let page = Page (postTitle meta) html
+    time <- Utilities.now
+    let page =
+          Page
+            { pageTitle = postTitle meta,
+              pageContent = html,
+              pageNow = time,
+              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+            }
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target <> " from " <> src
 
@@ -111,8 +122,14 @@ typstPost src = do
   post <- readTypstPost src
   let rPost = fromPost post
   postHtml <- applyTemplate "post.html" rPost
-
-  let page = Page (postTitle post) postHtml
+  time <- Utilities.now
+  let page =
+        Page
+          { pageTitle = rPostTitle rPost,
+            pageContent = postHtml,
+            pageNow = time,
+            pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+          }
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
 
@@ -126,7 +143,14 @@ markdownPost src = do
   -- Shake.putInfo $ show . toJSON $ rPost
   postHtml <- applyTemplate "post.html" rPost
 
-  let page = Page (postTitle post) postHtml
+  time <- Utilities.now
+  let page =
+        Page
+          { pageTitle = rPostTitle rPost,
+            pageContent = postHtml,
+            pageNow = time,
+            pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+          }
   applyTemplateAndWrite "default.html" page target
   Shake.putInfo $ "Built " <> target <> " from " <> src
 
@@ -140,7 +164,14 @@ home =
         <$> forM postPaths readPost
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
-    let page = Page (T.pack "Home") html
+    time <- Utilities.now
+    let page =
+          Page
+            { pageTitle = T.pack "Home",
+              pageContent = html,
+              pageNow = time,
+              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+            }
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target
 
@@ -151,17 +182,31 @@ postList =
     posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
     let posts' = map fromPost posts
     html <- applyTemplate "posts.html" $ HM.singleton "posts" posts'
-    let page = Page (T.pack "Blog Posts") html
+    time <- Utilities.now
+    let page =
+          Page
+            { pageTitle = T.pack "Blog Posts",
+              pageContent = html,
+              pageNow = time,
+              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+            }
     applyTemplateAndWrite "default.html" page target
     Shake.putInfo $ "Built " <> target
+
+data Rss = Rss
+  { now :: T.Text,
+    posts :: [RenderedPost]
+  }
+  deriving (Show, Generic)
+  deriving (ToJSON) via Vanilla Rss
 
 rss :: Rules ()
 rss =
   outputDir </> "index.xml" %> \target -> do
     postPaths <- getPublishedPosts
-    posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    -- TODO: change this to actually have it's own type for things like updated
-    applyTemplateAndWrite "feed.xml" (HM.singleton "posts" posts) target
+    posts <- map fromPost . sortOn (Ord.Down . postDate) <$> forM postPaths readPost
+    time <- Utilities.now
+    applyTemplateAndWrite "feed.xml" (Rss time posts) target
 
     Shake.putInfo $ "Built " <> target
 

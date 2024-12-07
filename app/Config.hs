@@ -4,7 +4,7 @@ outputDir :: String
 outputDir = "publish"
 
 assetGlobs :: [String]
-assetGlobs = ["static//*"]
+assetGlobs = ["static//*", "robots.txt"]
 
 -- CAN ONLY BE TYPST DOCS UNLESS YOU CHANGE THINGS AT THE `pages` RULE in `Main.hs
 pagePaths :: [String]
