@@ -158,9 +158,7 @@ home :: Rules ()
 home =
   outputDir </> "index.html" %> \target -> do
     postPaths <- getPublishedPosts
-    posts <-
-      take 3
-        . sortOn (Ord.Down . postDate)
+    posts <- sortOn (Ord.Down . postDate)
         <$> forM postPaths readPost
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
