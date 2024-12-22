@@ -64,7 +64,6 @@ buildRules = do
   assets
   pages
   postsRule
-  postList
   rss
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
@@ -158,7 +157,8 @@ home :: Rules ()
 home =
   outputDir </> "index.html" %> \target -> do
     postPaths <- getPublishedPosts
-    posts <- sortOn (Ord.Down . postDate)
+    posts <-
+      sortOn (Ord.Down . postDate)
         <$> forM postPaths readPost
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
@@ -166,24 +166,6 @@ home =
     let page =
           Page
             { pageTitle = T.pack "Home",
-              pageContent = html,
-              pageNow = time,
-              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
-            }
-    applyTemplateAndWrite "default.html" page target
-    Shake.putInfo $ "Built " <> target
-
-postList :: Rules ()
-postList =
-  outputDir </> "posts/index.html" %> \target -> do
-    postPaths <- getPublishedPosts
-    posts <- sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    let posts' = map fromPost posts
-    html <- applyTemplate "posts.html" $ HM.singleton "posts" posts'
-    time <- Utilities.now
-    let page =
-          Page
-            { pageTitle = T.pack "Blog Posts",
               pageContent = html,
               pageNow = time,
               pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target

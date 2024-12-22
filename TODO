@@ -1,18 +1,12 @@
-Fix compile errors from setting up the groundwork for rss and section css shenanigans so I can do the rss feed now
-
-Clean up the
-
-make the date format ISO (Markdown seems fine, just need typst)?
-
-make typst dependant on yaml?
-
-add template variable(s) for what "section" we're in
-
-make it so typst citation section has a header and/or is a div elem instead of a section element
-
 github action for deploy to github pages
 
 minify js and css when copying over instead of just copying
+
+add in sass preprocessing with the cli
+
+make typst dependant on yaml?
+
+make it so typst citation section has a header and/or is a div elem instead of a section element
 
 process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
 
