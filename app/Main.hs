@@ -52,9 +52,6 @@ buildSite = do
   postPaths <- getPublishedPosts
   Shake.need $ map indexHtmlOutputPath postPaths
 
-  -- posts list
-  Shake.need [indexHtmlOutputPath "posts"]
-
   -- remaining pages, index.xml = rss feed
   Shake.need $ map (outputDir </>) ["index.html", "index.xml"]
 
