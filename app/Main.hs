@@ -69,7 +69,8 @@ assets =
   map (outputDir </>) assetGlobs |%> \target -> do
     let src = FP.dropDirectory1 target
     Shake.copyFileChanged src target
-    Shake.putInfo $ "Copied " <> target <> " from " <> src
+
+-- Shake.putInfo $ "Copied " <> target <> " from " <> src
 
 -- handling typst only because pages should only be typst no reason for backwards compat on that
 pages :: Rules ()
@@ -88,7 +89,8 @@ pages =
               pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
             }
     applyTemplateAndWrite "default.html" page target
-    Shake.putInfo $ "Built " <> target <> " from " <> src
+
+-- Shake.putInfo $ "Built " <> target <> " from " <> src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
 postsRule :: Rules ()
@@ -127,7 +129,8 @@ typstPost src = do
             pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
           }
   applyTemplateAndWrite "default.html" page target
-  Shake.putInfo $ "Built " <> target <> " from " <> src
+
+-- Shake.putInfo $ "Built " <> target <> " from " <> src
 
 markdownPost :: FP.FilePath -> Action ()
 markdownPost src = do
@@ -148,7 +151,8 @@ markdownPost src = do
             pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
           }
   applyTemplateAndWrite "default.html" page target
-  Shake.putInfo $ "Built " <> target <> " from " <> src
+
+-- Shake.putInfo $ "Built " <> target <> " from " <> src
 
 home :: Rules ()
 home =
@@ -168,7 +172,8 @@ home =
               pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
             }
     applyTemplateAndWrite "default.html" page target
-    Shake.putInfo $ "Built " <> target
+
+-- Shake.putInfo $ "Built " <> target
 
 data Rss = Rss
   { now :: T.Text,
@@ -185,7 +190,7 @@ rss =
     time <- Utilities.now
     applyTemplateAndWrite "feed.xml" (Rss time posts) target
 
-    Shake.putInfo $ "Built " <> target
+-- Shake.putInfo $ "Built " <> target
 
 readPost :: FilePath -> Action Post
 readPost postPath = do
@@ -198,7 +203,7 @@ readTypstPost :: FilePath -> Action Post
 readTypstPost postPath = do
   html <- typstToHtml postPath
   post <- yamlToPost $ typstMetaPath postPath
-  Shake.putInfo $ "Read " <> postPath
+  -- Shake.putInfo $ "Read " <> postPath
   return $
     post
       { postContent = Just html,
@@ -208,7 +213,7 @@ readTypstPost postPath = do
 readMarkdownPost :: FilePath -> Action Post
 readMarkdownPost postPath = do
   (post, html) <- markdownToHtml postPath
-  Shake.putInfo $ "Read " <> postPath
+  -- Shake.putInfo $ "Read " <> postPath
   return $
     post
       { postContent = Just html,

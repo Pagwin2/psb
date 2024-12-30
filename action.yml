@@ -1,0 +1,6 @@
+# https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+name: 'psb'
+description: 'Use PSB to build'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

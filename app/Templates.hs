@@ -41,7 +41,7 @@ readTemplate templatePath = do
   case eTemplate of
     Right template -> do
       Shake.need . Mus.getPartials . Mus.ast $ template
-      Shake.putInfo $ "Read " <> templatePath
+      --Shake.putInfo $ "Read " <> templatePath
       return template
     Left err -> fail $ show err
 

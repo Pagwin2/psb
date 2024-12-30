@@ -2,9 +2,11 @@ github action for deploy to github pages
 
 minify js and css when copying over instead of just copying
 
-add in sass preprocessing with the cli
-
 make typst dependant on yaml?
+
+add rst support so I'm not dependant on typst not breaking
+
+add a cli flag to send webmentions and track the ones sent/acked in some file, probably a simple csv with path and what got linked to (https://indieweb.org/Webmention) (https://indieweb.org/Webmention-developer)
 
 make it so typst citation section has a header and/or is a div elem instead of a section element
 
