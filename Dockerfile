@@ -14,4 +14,6 @@ RUN cabal build
 
 WORKDIR /github/workspace
 
-ENTRYPOINT ["/mnt/dist-newstyle/build/x86_64-linux/ghc-9.4.8/psb-0.1.0.0/x/psb/build/psb/psb", "build", "-p2"]
+RUN export folder=$(ls /mnt/dist-newstyle/build/x86_64-linux) && mv /mnt/dist-newstyle/build/x86_64-linux/"$folder"/psb-0.1.0.0/x/psb/build/psb/psb /mnt/psb
+
+ENTRYPOINT ["/mnt/psb", "build"]
