@@ -3,4 +3,4 @@ name: 'psb'
 description: 'Use PSB to build static a static site'
 runs:
   using: 'docker'
-  image: 'Dockerfile'
+  image: 'docker://ghcr.io/pagwin-fedora/psb:v1'
