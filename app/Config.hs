@@ -11,4 +11,4 @@ pagePaths :: [String]
 pagePaths = []
 
 postGlobs :: [String]
-postGlobs = ["posts/*.typ", "posts/*.md"]
+postGlobs = ["posts/*.md"]

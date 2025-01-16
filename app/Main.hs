@@ -59,7 +59,6 @@ buildRules :: Rules ()
 buildRules = do
   home
   assets
-  pages
   postsRule
   rss
 
@@ -69,28 +68,6 @@ assets =
   map (outputDir </>) assetGlobs |%> \target -> do
     let src = FP.dropDirectory1 target
     Shake.copyFileChanged src target
-
--- Shake.putInfo $ "Copied " <> target <> " from " <> src
-
--- handling typst only because pages should only be typst no reason for backwards compat on that
-pages :: Rules ()
-pages =
-  map indexHtmlOutputPath pagePaths |%> \target -> do
-    let src = indexHtmlTypstSourcePath target
-    let metaSrc = indexHtmlTypstMetaPath target
-    html <- typstToHtml src
-    meta <- yamlToPost metaSrc
-    time <- Utilities.now
-    let page =
-          Page
-            { pageTitle = postTitle meta,
-              pageContent = html,
-              pageNow = time,
-              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
-            }
-    applyTemplateAndWrite "default.html" page target
-
--- Shake.putInfo $ "Built " <> target <> " from " <> src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
 postsRule :: Rules ()
@@ -105,32 +82,11 @@ postsRule =
           when
             should
             ( case FP.takeExtension path of
-                ".typ" -> typstPost path
                 ".md" -> markdownPost path
                 _ -> error $ "invalid file extension for post " <> target
             )
       )
     return ()
-
-typstPost :: FP.FilePath -> Action ()
-typstPost src = do
-  Shake.need [src]
-  let target = indexHtmlOutputPath src
-
-  post <- readTypstPost src
-  let rPost = fromPost post
-  postHtml <- applyTemplate "post.html" rPost
-  time <- Utilities.now
-  let page =
-        Page
-          { pageTitle = rPostTitle rPost,
-            pageContent = postHtml,
-            pageNow = time,
-            pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
-          }
-  applyTemplateAndWrite "default.html" page target
-
--- Shake.putInfo $ "Built " <> target <> " from " <> src
 
 markdownPost :: FP.FilePath -> Action ()
 markdownPost src = do
@@ -195,20 +151,8 @@ rss =
 readPost :: FilePath -> Action Post
 readPost postPath = do
   case FP.takeExtension postPath of
-    ".typ" -> readTypstPost postPath
     ".md" -> readMarkdownPost postPath
     _ -> error $ "unknown file extension for file" <> postPath
-
-readTypstPost :: FilePath -> Action Post
-readTypstPost postPath = do
-  html <- typstToHtml postPath
-  post <- yamlToPost $ typstMetaPath postPath
-  -- Shake.putInfo $ "Read " <> postPath
-  return $
-    post
-      { postContent = Just html,
-        postLink = Just . T.pack $ "/" <> FP.dropExtension postPath <> "/"
-      }
 
 readMarkdownPost :: FilePath -> Action Post
 readMarkdownPost postPath = do

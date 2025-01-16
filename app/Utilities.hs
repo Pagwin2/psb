@@ -25,14 +25,7 @@ indexHtmlOutputPath srcPath =
 -- were applicative shenanigans necessary? no
 -- but using them felt cool
 indexHtmlSourcePaths :: FilePath -> [FilePath]
-indexHtmlSourcePaths path = [indexHtmlTypstSourcePath, indexHtmlMarkdownSourcePath] <*> [path]
-
-indexHtmlTypstSourcePath :: FilePath -> FilePath
-indexHtmlTypstSourcePath =
-  FP.dropDirectory1
-    . (<.> "typ")
-    . FP.dropTrailingPathSeparator
-    . FP.dropFileName
+indexHtmlSourcePaths path = [indexHtmlMarkdownSourcePath] <*> [path]
 
 indexHtmlMarkdownSourcePath :: FilePath -> FilePath
 indexHtmlMarkdownSourcePath =
@@ -40,25 +33,6 @@ indexHtmlMarkdownSourcePath =
     . (<.> "md")
     . FP.dropTrailingPathSeparator
     . FP.dropFileName
-
-indexHtmlTypstMetaPath :: FilePath -> FilePath
-indexHtmlTypstMetaPath = typstMetaPath . indexHtmlTypstSourcePath
-
-typstMetaPath :: FilePath -> FilePath
-typstMetaPath typstPath = FP.dropExtension typstPath <.> "yaml"
-
-typstToHtml :: FilePath -> Action Text
-typstToHtml filePath = do
-  content <- Shake.readFile' filePath
-  Shake.quietly . Shake.traced "Typst to HTML" $ do
-    doc <- runPandoc . Pandoc.readTypst readerOptions . T.pack $ content
-    html <- runPandoc . Pandoc.writeHtml5String writerOptions $ doc
-    return html
-  where
-    readerOptions =
-      Pandoc.def {Pandoc.readerExtensions = Pandoc.pandocExtensions}
-    writerOptions =
-      Pandoc.def {Pandoc.writerExtensions = Pandoc.pandocExtensions}
 
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
@@ -137,14 +111,11 @@ yamlToPost path = do
   -- let post' = dateTransform post
   return post
 
-isTypstPost :: FilePath -> Bool
-isTypstPost path = FP.takeExtension path == ".typ"
-
 isMarkdownPost :: FilePath -> Bool
 isMarkdownPost path = FP.takeExtension path == ".md"
 
 postHandles :: [(FilePath -> Bool, FilePath -> Action Post)]
-postHandles = [(isTypstPost, yamlToPost . typstMetaPath), (isMarkdownPost, markdownToPost)]
+postHandles = [(isMarkdownPost, markdownToPost)]
 
 isDraft :: FilePath -> Action Bool
 isDraft path = do
