@@ -11,7 +11,6 @@ import Config
 import Control.Monad (forM, when)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
-import Data.Maybe (fromJust)
 import qualified Data.Ord as Ord
 import qualified Data.Text as T
 import Deriving.Aeson
@@ -20,7 +19,6 @@ import Development.Shake (Action, Rules, (%>), (|%>), (~>))
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((</>))
 import qualified Development.Shake.FilePath as FP
-import qualified Development.Shake.FilePath as Shake
 import Templates
 import Types
 import Utilities
@@ -104,7 +102,7 @@ markdownPost src = do
           { pageTitle = rPostTitle rPost,
             pageContent = postHtml,
             pageNow = time,
-            pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+            pageUrl = T.pack ""
           }
   applyTemplateAndWrite "default.html" page target
 
@@ -125,7 +123,7 @@ home =
             { pageTitle = T.pack "Home",
               pageContent = html,
               pageNow = time,
-              pageSection = T.pack $ fromJust $ Shake.stripExtension "html" target
+              pageUrl = T.pack ""
             }
     applyTemplateAndWrite "default.html" page target
 

@@ -10,8 +10,8 @@ data Page = Page
     pageContent :: Text,
     -- build time
     pageNow :: Text,
-    -- css class for page section
-    pageSection :: Text
+    --
+    pageUrl :: Text
   }
   deriving (Show, Generic)
   deriving (ToJSON) via PrefixedSnake "page" Page
