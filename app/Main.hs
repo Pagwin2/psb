@@ -93,16 +93,16 @@ markdownPost src = do
 
   post <- readMarkdownPost src
   let rPost = fromPost post
-  -- Shake.putInfo $ show . toJSON $ rPost
   postHtml <- applyTemplate "post.html" rPost
 
   time <- Utilities.now
+  -- Shake.putInfo $ T.unpack $ urlConvert target
   let page =
         Page
           { pageTitle = rPostTitle rPost,
             pageContent = postHtml,
             pageNow = time,
-            pageUrl = T.pack ""
+            pageUrl = urlConvert target
           }
   applyTemplateAndWrite "default.html" page target
 
@@ -118,12 +118,13 @@ home =
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
     time <- Utilities.now
+    -- Shake.putInfo $ T.unpack $ urlConvert target
     let page =
           Page
             { pageTitle = T.pack "Home",
               pageContent = html,
               pageNow = time,
-              pageUrl = T.pack ""
+              pageUrl = urlConvert target
             }
     applyTemplateAndWrite "default.html" page target
 
