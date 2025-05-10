@@ -1,9 +1,5 @@
-module Markdown
-  ( module Markdown.Parser,
-    module Markdown.Data,
-  )
-where
+{-# LANGUAGE OverloadedStrings #-}
 
-import Markdown.Data
-import Markdown.Parser
+module Markdown () where
 
+import CMark
