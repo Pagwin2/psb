@@ -1,44 +1,24 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Markdown.Parser
-  ( Markdown.Parser.lines,
+  ( heading,
   )
 where
 
-import Data.Functor (void)
-import Data.Text (Text, pack)
+import Markdown.Data
 import Text.Parsec
 
 -- https://spec.commonmark.org/0.31.2/
 -- https://hackage.haskell.org/package/parsec
 
-linebreak ::
-  (Monad m, Stream s m Char) =>
-  ParsecT s u m ()
--- 2 newlines due to mark
-linebreak = void (newline *> newline)
-
-emptyParse ::
-  (Monad m, Stream s m Char) =>
-  ParsecT s u m String
-emptyParse = "" <$ notFollowedBy anyChar
-
-line ::
-  (Monad m, Stream s m Char) =>
-  ParsecT s u m Text
-line = fmap pack $ many $ notFollowedBy linebreak *> anyChar
-
-lines ::
-  (Monad m, Stream s m Char) =>
-  ParsecT s u m [Text]
-lines = line `sepBy` linebreak
-
-heading ::
-  (Monad m, Stream s m Char) =>
-  ParsecT s u m (Int, Text)
+-- only ATX headings
+heading :: Parser MarkdownElement
 heading = do
-  level <- fmap length $ many1 $ char '#'
-  text <- line
-  pure (level, text)
+  -- technically this can lead to illegal heading levels but
+  -- all the input is written by me so who cares
+  level <- fmap length $ try $ many1 $ char '#'
 
--- TODO: blockquote, single backticks, triple backticks, links, arb HTML
+  return $ MHeading level $ Only "TODO"
+
+rawHTML
