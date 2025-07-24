@@ -1,4 +1,4 @@
-(* Markdown EBNF Grammar *)
+(* Markdown EBNF Grammar with HTML Support *)
 
 document = { block } ;
 
@@ -8,6 +8,7 @@ block = heading
       | quote_block
       | list
       | table
+      | html_block
       | paragraph
       | blank_line ;
 
@@ -68,6 +69,47 @@ table_cell = { character - ( "|" | newline ) } ;
 
 table_align_spec = [ ":" ] "-" { "-" } [ ":" ] ;
 
+(* HTML Support *)
+html_block = html_block_element;
+
+html_block_element = html_open_tag { html_content } html_close_tag newline
+                   | html_self_closing_tag newline
+                   | html_void_tag newline ;
+
+html_open_tag = "<" html_tag_name { " " html_attribute } [ " " ] ">" ;
+
+html_close_tag = "</" html_tag_name ">" ;
+
+html_self_closing_tag = "<" html_tag_name { " " html_attribute } [ " " ] "/>" ;
+
+html_void_tag = "<" html_void_tag_name { " " html_attribute } [ " " ] [ "/" ] ">" ;
+
+html_void_tag_name = "area" | "base" | "br" | "col" | "embed" | "hr" | "img" | "input" 
+                   | "link" | "meta" | "param" | "source" | "track" | "wbr" ;
+
+html_tag_name = letter { letter | digit | "-" | "_" | ":" | "." } ;
+
+html_attribute = html_attribute_name [ "=" html_attribute_value ] ;
+
+html_attribute_name = ( letter | "_" | ":" ) { letter | digit | "-" | "_" | ":" | "." } ;
+
+html_attribute_value = html_quoted_value | html_unquoted_value ;
+
+html_quoted_value = ( '"' { character - '"' } '"' )
+                  | ( "'" { character - "'" } "'" ) ;
+
+html_unquoted_value = { character - ( " " | "\t" | "\n" | "\r" | ">" | "/" | "=" ) } ;
+
+html_content = html_text | html_element | html_comment | html_processing_instruction ;
+
+html_text = { character - "<" } ;
+
+html_element = html_open_tag { html_content } html_close_tag
+             | html_self_closing_tag
+             | html_void_tag ;
+
+html_comment = "<!--" { character - ( "-" "-" ">" ) | "-" character - ( "-" ">" ) | "-" "-" character - ">" } "-->" ;
+
 (* Paragraphs *)
 paragraph = inline_text { newline inline_text } newline ;
 
@@ -80,8 +122,19 @@ inline_element = emphasis
                | link
                | image
                | autolink
+               | html_inline
                | line_break
                | plain_text ;
+
+html_inline = html_inline_element | html_comment | html_processing_instruction ;
+
+html_inline_element = html_open_tag { html_inline_content } html_close_tag
+                    | html_self_closing_tag
+                    | html_void_tag ;
+
+html_inline_content = html_inline_text | html_inline_element | html_comment | html_processing_instruction ;
+
+html_inline_text = { character - "<" } ;
 
 emphasis = ( "*" non_asterisk_text "*" )
          | ( "_" non_underscore_text "_" ) ;
@@ -130,7 +183,7 @@ email = { character - ( "@" | ">" ) } "@" { character - ">" } ;
 (* Utilities *)
 blank_line = newline ;
 
-special_char = "*" | "_" | "`" | "[" | "]" | "(" | ")" | "#" | ">" | "|" | "!" | "\\" ;
+special_char = "*" | "_" | "`" | "[" | "]" | "(" | ")" | "#" | ">" | "|" | "!" | "\\" | "<" ;
 
 newline = "\n" | "\r\n" ;
 

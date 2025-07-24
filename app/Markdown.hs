@@ -2,4 +2,3 @@
 
 module Markdown () where
 
-import CMark
