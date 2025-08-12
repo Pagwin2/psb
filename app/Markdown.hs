@@ -37,14 +37,23 @@ htmlBlock = pure $ HTML $ Raw ""
 
 paragraph :: Parser Element
 paragraph = do
-  first_text <- inlineText
-  rem_text <- many (endOfLine >> inlineText)
+  first <- paragraphLine
+  rem <- many paragraphContinuation
   pure $ Paragraph $ P []
 
-inlineText :: Parser InlineText
-inlineText = choi
+paragraphLine :: Parser [InlineText]
+paragraphLine = many inlineText <* endOfLine
 
-blankline :: Parser Element
-blankline = do
+paragraphContinuation :: Parser [InlineText]
+paragraphContinuation = notFollowedBy blockElemStart *> paragraphLine
+
+inlineText :: Parser InlineText
+inlineText = choice [emphasis, strong, inlineCode, link, image, inlineHTML, paragraphLineBreak, escapedChar, plainText]
+
+plainText :: Parser Text
+plainText = 
+
+blankLine :: Parser Element
+blankLine = do
   endOfLine
   pure $ BlankLine BL
