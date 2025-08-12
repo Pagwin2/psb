@@ -1,0 +1,140 @@
+; Left-Factored ABNF Grammar for Markdown with Embedded HTML
+; Based on RFC 5234 (ABNF) syntax
+
+; Top-level document structure
+document = *( block-element / CRLF )
+
+; Block-level elements (left-factored by common prefixes)
+block-element = heading / code-block / blockquote / list / horizontal-rule / 
+                html-block / paragraph
+
+; Headings (ATX-style: # ## ### etc.)
+heading = heading-prefix heading-content
+heading-prefix = 1*6"#" *WSP
+heading-content = *( inline-element ) line-ending
+
+; Code blocks (fenced with ``` or indented)
+code-block = fenced-code-block / indented-code-block
+fenced-code-block = code-fence [ language-info ] line-ending
+                   *( code-line )
+                   code-fence line-ending
+code-fence = "```"
+language-info = 1*( ALPHA / DIGIT / "-" / "+" / "." )
+indented-code-block = 1*( indented-code-line )
+indented-code-line = 4*WSP 1*VCHAR line-ending
+code-line = *VCHAR line-ending
+
+; Blockquotes
+blockquote = 1*( blockquote-line )
+blockquote-line = ">" [ WSP ] *( inline-element ) line-ending
+
+; Lists (left-factored by list marker)
+list = unordered-list / ordered-list
+unordered-list = 1*( unordered-list-item )
+ordered-list = 1*( ordered-list-item )
+unordered-list-item = unordered-marker list-item-content
+ordered-list-item = ordered-marker list-item-content
+unordered-marker = ( "*" / "-" / "+" ) WSP
+ordered-marker = 1*DIGIT "." WSP
+list-item-content = *( inline-element ) line-ending
+                   *( list-continuation )
+list-continuation = 2*WSP *( inline-element ) line-ending
+
+; Horizontal rule
+horizontal-rule = hr-dashes / hr-asterisks / hr-underscores
+hr-dashes = 3*( "-" ) *( WSP / "-" ) line-ending
+hr-asterisks = 3*( "*" ) *( WSP / "*" ) line-ending  
+hr-underscores = 3*( "_" ) *( WSP / "_" ) line-ending
+
+; HTML blocks
+html-block = html-block-tag / html-comment-block / html-declaration
+html-block-tag = "<" tag-name *( WSP attribute ) [ WSP ] [ "/" ] ">"
+                *( html-content )
+                [ "</" tag-name ">" ]
+                line-ending
+html-comment-block = "<!--" *( CHAR ) "-->" line-ending
+html-declaration = "<!" 1*ALPHA *( WSP / VCHAR ) ">" line-ending
+
+; Paragraphs (catch-all for regular text)
+paragraph = paragraph-line 1*( paragraph-continuation )
+paragraph-line = *( inline-element ) line-ending
+paragraph-continuation = !block-element-start *( inline-element ) line-ending
+block-element-start = "#" / ">" / ( 1*DIGIT "." WSP ) / 
+                     ( ( "*" / "-" / "+" ) WSP ) / 
+                     "```" / 4*WSP / "<"
+
+; Inline elements (left-factored by opening characters)
+inline-element = emphasis / strong / code-span / link / image / 
+                html-inline / line-break / escaped-char / plain-text
+
+; Emphasis and strong (left-factored by delimiter)
+emphasis = emphasis-asterisk / emphasis-underscore
+strong = strong-asterisk / strong-underscore
+emphasis-asterisk = "*" emphasis-content "*"
+emphasis-underscore = "_" emphasis-content "_"
+strong-asterisk = "**" strong-content "**"
+strong-underscore = "__" strong-content "__"
+emphasis-content = 1*( !( "*" / line-ending ) inline-element )
+strong-content = 1*( !( "**" / line-ending ) inline-element )
+
+; Code spans
+code-span = code-delimiter code-span-content code-delimiter
+code-delimiter = 1*"`"
+code-span-content = 1*( !"`" CHAR )
+
+; Links and images (left-factored by opening bracket)
+link = link-reference / link-inline
+image = image-reference / image-inline
+link-reference = "[" link-text "]" "[" reference-id "]"
+link-inline = "[" link-text "]" "(" url [ WSP title ] ")"
+image-reference = "!" "[" alt-text "]" "[" reference-id "]"
+image-inline = "!" "[" alt-text "]" "(" url [ WSP title ] ")"
+link-text = 1*( !( "]" / line-ending ) inline-element )
+alt-text = 1*( !( "]" / line-ending ) CHAR )
+reference-id = 1*( !( "]" / line-ending ) CHAR )
+url = 1*( !( WSP / ")" / line-ending ) CHAR )
+title = ( DQUOTE title-content DQUOTE ) / 
+        ( "'" title-content "'" ) /
+        ( "(" title-content ")" )
+title-content = *( !( DQUOTE / "'" / ")" ) CHAR )
+
+; Inline HTML
+html-inline = html-tag-inline / html-entity
+html-tag-inline = "<" tag-name *( WSP attribute ) [ WSP ] [ "/" ] ">"
+html-entity = "&" entity-name ";"
+entity-name = 1*( ALPHA / DIGIT )
+
+; HTML attributes and content
+tag-name = ALPHA *( ALPHA / DIGIT / "-" / ":" )
+attribute = attribute-name [ "=" attribute-value ]
+attribute-name = ( ALPHA / "_" / ":" ) *( ALPHA / DIGIT / "-" / "_" / ":" / "." )
+attribute-value = ( DQUOTE *( !DQUOTE CHAR ) DQUOTE ) /
+                  ( "'" *( !"'" CHAR ) "'" ) /
+                  ( 1*( !( WSP / ">" ) VCHAR ) )
+html-content = *( !( "</" ) CHAR )
+
+; Line breaks and escaped characters
+line-break = hard-line-break / soft-line-break
+hard-line-break = 2*WSP line-ending
+soft-line-break = line-ending
+escaped-char = "\" ( VCHAR / WSP )
+
+; Plain text (everything else)
+plain-text = 1*( !special-char CHAR )
+special-char = "*" / "_" / "`" / "[" / "]" / "(" / ")" / 
+               "<" / ">" / "#" / "+" / "-" / "." / "!" /
+               "&" / "\" / line-ending
+
+; Basic definitions
+line-ending = CRLF / LF / CR
+WSP = SP / HTAB
+CHAR = %x00-10FFFF  ; Any Unicode character
+VCHAR = %x21-7E     ; Visible ASCII characters
+ALPHA = %x41-5A / %x61-7A  ; A-Z / a-z  
+DIGIT = %x30-39     ; 0-9
+SP = %x20           ; Space
+HTAB = %x09         ; Horizontal tab
+CR = %x0D           ; Carriage return
+LF = %x0A           ; Line feed
+CRLF = CR LF        ; Internet standard newline
+DQUOTE = %x22       ; Double quote

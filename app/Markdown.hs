@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -8,7 +9,7 @@ import IR
 import Text.Parsec
 import Text.Parsec.Combinator
 
-type Parser a = forall s u m t. (Stream s m t) => ParsecT s u m a
+type Parser a = forall s u m. (Stream s m Char) => ParsecT s u m a
 
 markdownParser :: Parser Document
 markdownParser = Doc <$> many block
@@ -35,7 +36,15 @@ htmlBlock :: Parser Element
 htmlBlock = pure $ HTML $ Raw ""
 
 paragraph :: Parser Element
-paragraph = pure $ Paragraph $ P ""
+paragraph = do
+  first_text <- inlineText
+  rem_text <- many (endOfLine >> inlineText)
+  pure $ Paragraph $ P []
+
+inlineText :: Parser InlineText
+inlineText = choi
 
 blankline :: Parser Element
-blankline = pure $ BlankLine BL
+blankline = do
+  endOfLine
+  pure $ BlankLine BL
