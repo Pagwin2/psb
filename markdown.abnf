@@ -73,11 +73,11 @@ paragraph-continuation = paragraph-first-element *( inline-element ) line-ending
 
 ; First element of paragraph - anything that's not a block starter
 paragraph-first-element = emphasis / strong / code-span / link / image / 
-                         html-inline / line-break / escaped-char / plain-text
+                         html-inline  / escaped-char / plain-text
 
 ; Inline elements
 inline-element = emphasis / strong / code-span / link / image / 
-                html-inline / line-break / escaped-char / plain-text
+                html-inline / escaped-char / plain-text
 
 ; Emphasis and strong (left-factored by delimiter)
 emphasis = emphasis-asterisk / emphasis-underscore
@@ -135,8 +135,6 @@ attribute-value-squote = *( %x20-26 / %x28-10FFFF )  ; Everything except '
 attribute-value-unquoted = 1*( %x21-22 / %x24-26 / %x28-2F / %x30-3D / %x3F-10FFFF )
 html-content = *( %x20-3B / %x3D-10FFFF )  ; Everything except <
 
-; Line breaks and escaped characters
-line-break = 2*WSP line-ending
 escaped-char = "\" VCHAR
 
 ; Plain text variations (to avoid conflicts)

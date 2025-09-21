@@ -39,7 +39,8 @@ paragraph :: Parser Element
 paragraph = do
   first <- paragraphLine
   rem <- many paragraphContinuation
-  pure $ Paragraph $ P []
+  let combined = Prelude.concat (first : rem)
+  pure $ Paragraph $ P combined
 
 paragraphLine :: Parser [InlineText]
 paragraphLine = many inlineText <* endOfLine
@@ -48,12 +49,24 @@ paragraphContinuation :: Parser [InlineText]
 paragraphContinuation = notFollowedBy blockElemStart *> paragraphLine
 
 inlineText :: Parser InlineText
-inlineText = choice [emphasis, strong, inlineCode, link, image, inlineHTML, paragraphLineBreak, escapedChar, plainText]
+inlineText = choice [emphasis, strong, inlineCode, link, image, inlineHTML, escapedChar, plainText]
 
-plainText :: Parser Text
-plainText = 
+plainText :: Parser InlineText
+-- abnf is very specific about what's allowed due to actual ABNF not allowing negation but I'm lazy
+plainText = fmap (Normal . pack) $ many $ noneOf "*_`[]()<>#+-.!&\\\n"
 
-blankLine :: Parser Element
-blankLine = do
-  endOfLine
-  pure $ BlankLine BL
+escapedChar :: Parser InlineText
+escapedChar = char '\\' *> fmap Escaped visibleChar
+
+htmlInline :: Parser InlineText
+htmlInline = do
+  _ <- char '<'
+  remaining <- htmlInlineRemainder
+  pure $ HTMLIn $ pack $ '<' : remaining
+  where
+    htmlInlineRemainder = tagName *> attrList
+    tagName = many $ choice [alphaNum, char '-', char ':']
+
+visibleChar :: Parser Char
+-- technically more strict but I'm just going to hope I never have to deal with that
+visibleChar = anyChar

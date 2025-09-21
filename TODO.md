@@ -4,6 +4,10 @@
 
 - minify js and css when copying over instead of just copying
 
-- look into adding postcss support perhaps
+- setup fingerprinting in file names for css and js
+
+- dev server setup (with live reloading)
 
 - see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
+
+- look into adding postcss support perhaps

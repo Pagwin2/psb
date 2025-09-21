@@ -20,7 +20,6 @@ data List = L {list_type :: ListType, items :: [ListItem]}
 
 data Table = T {header :: TableHeader, rows :: [TableRow]}
 
--- TODO: layout/sizing info?
 newtype TableHeader = TH [Text]
 
 newtype TableRow = TR Text
@@ -29,7 +28,7 @@ newtype HTML = Raw Text
 
 newtype Paragraph = P [InlineText]
 
-data InlineText = Normal Text | Bold InlineText | Italic InlineText | CodeLine Text | Link {nest :: InlineText, href :: Text}
+data InlineText = Normal Text | Escaped Char | Bold InlineText | Italic InlineText | CodeLine Text | Link {nest :: InlineText, href :: Text} | HTMLIn Text
 
 data BlankLine = BL
 
