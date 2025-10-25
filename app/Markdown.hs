@@ -4,6 +4,7 @@
 
 module Markdown (markdownParser) where
 
+import Data.Functor
 import Data.Text
 import IR
 import Text.Parsec
@@ -60,12 +61,25 @@ escapedChar = char '\\' *> fmap Escaped visibleChar
 
 htmlInline :: Parser InlineText
 htmlInline = do
-  _ <- char '<'
+  char '<'
+  tagName <- name
   remaining <- htmlInlineRemainder
-  pure $ HTMLIn $ pack $ '<' : remaining
+  whiteSpace
+  char '>'
+  let remainingTagText = foldl' (\ongoing  current -> ongoing ++ ' ' : current) "" remaining
+
+  pure $ HTMLIn $ pack $ '<' : name ++ remaining
   where
-    htmlInlineRemainder = tagName *> attrList
-    tagName = many $ choice [alphaNum, char '-', char ':']
+    htmlInlineRemainder = many $ whiteSpace *> attribute
+    name = many $ choice [alphaNum, char '-', char ':']
+    attribute = do
+        attrName <- name
+        char '='
+        attrValue <- value
+        pure attrName ++ '=' : 
+
+whiteSpace :: Parser Text
+whiteSpace = pack <$> many space
 
 visibleChar :: Parser Char
 -- technically more strict but I'm just going to hope I never have to deal with that

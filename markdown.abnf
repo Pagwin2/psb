@@ -126,7 +126,8 @@ entity-name = 1*( ALPHA / DIGIT )
 ; HTML attributes and tag content
 tag-name = ALPHA *( ALPHA / DIGIT / "-" / ":" )
 attribute = attribute-name [ "=" attribute-value ]
-attribute-name = ( ALPHA / "_" / ":" ) *( ALPHA / DIGIT / "-" / "_" / ":" / "." )
+attribute-name = ALPHA *( ALPHA / DIGIT / "-" / ":" )
+
 attribute-value = DQUOTE attribute-value-dquote DQUOTE /
                   "'" attribute-value-squote "'" /
                   attribute-value-unquoted
