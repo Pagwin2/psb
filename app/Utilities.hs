@@ -7,6 +7,7 @@ import qualified Data.Aeson as A
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Encoding (encodeUtf8)
 import Data.Time
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Data.Yaml.Aeson
@@ -14,8 +15,11 @@ import Development.Shake (Action)
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((<.>), (</>))
 import qualified Development.Shake.FilePath as FP
+import HTML
+import Markdown
 import Text.Pandoc (Block (Plain), Meta (..), MetaValue (..), Pandoc (..))
 import qualified Text.Pandoc as Pandoc
+import Text.Parsec hiding (Error)
 import Types
 
 indexHtmlOutputPath :: FilePath -> FilePath
@@ -36,6 +40,12 @@ indexHtmlMarkdownSourcePath =
 
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
+  content <- Shake.readFile' filePath
+  let Right (metadataText, document) = parse (liftA2 (,) Markdown.metadata Markdown.document) filePath content
+  let Right metadata = decodeEither' $ encodeUtf8 metadataText
+  pure (metadata, compileToHTML document)
+
+markdownToHtml_ filePath = do
   content <- Shake.readFile' filePath
   Shake.quietly . Shake.traced "Markdown to HTML" $ do
     pandoc@(Pandoc meta _) <-
