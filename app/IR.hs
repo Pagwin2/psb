@@ -9,7 +9,6 @@ data Element
   | Code Code
   | BlockQuote BlockQuote
   | List List
-  | Table Table
   | HTML HTML
   | Paragraph Paragraph
   | HorizontalRule
@@ -32,6 +31,8 @@ data ListItem = LI
   { content :: [InlineText], -- Flatten continuations into here
     children :: [List]
   }
+
+data ListType = Ordered | Unordered
 
 data List = L
   { list_type :: ListType,
