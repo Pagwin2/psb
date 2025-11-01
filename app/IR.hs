@@ -4,33 +4,72 @@ import Data.Text
 
 newtype Document = Doc [Element]
 
-data Element = Heading Heading | Code Code | BlockQuote BlockQuote | List List | Table Table | HTML HTML | Paragraph Paragraph | BlankLine BlankLine
+data Element
+  = Heading Heading
+  | Code Code
+  | BlockQuote BlockQuote
+  | List List
+  | Table Table
+  | HTML HTML
+  | Paragraph Paragraph
+  | HorizontalRule
 
-data Heading = H {level :: Int, text :: Text}
+-- Removed: BlankLine
 
-data Code = C {language :: Text, code :: Text}
+data Heading = H
+  { level :: Int,
+    text :: [InlineText]
+  }
 
-newtype BlockQuote = Q Text
+data Code = C
+  { language :: Maybe Text,
+    code :: Text
+  }
 
-data ListType = Ordered | Unordered
+data BlockQuote = Q [InlineText]
 
-data ListItem = LI {content :: Text, children :: [List]}
+data ListItem = LI
+  { content :: [InlineText], -- Flatten continuations into here
+    children :: [List]
+  }
 
-data List = L {list_type :: ListType, items :: [ListItem]}
+data List = L
+  { list_type :: ListType,
+    items :: [ListItem]
+  }
 
-data Table = T {header :: TableHeader, rows :: [TableRow]}
+-- Table: keep as-is or simplify based on your needs
 
-newtype TableHeader = TH [Text]
+data HTML
+  = HTMLTag
+  { tagName :: Text,
+    attributes :: [(Text, Maybe Text)],
+    content :: Text
+  }
 
-newtype TableRow = TR Text
-
-newtype HTML = Raw Text
+-- Optionally skip: HTMLComment, HTMLDeclaration
 
 newtype Paragraph = P [InlineText]
 
-data InlineText = Normal Text | Escaped Char | Bold InlineText | Italic InlineText | CodeLine Text | Link {nest :: InlineText, href :: Text} | HTMLIn Text
-
-data BlankLine = BL
+data InlineText
+  = Text Text -- Combined Normal and Escaped
+  | Bold [InlineText]
+  | Italic [InlineText]
+  | Code Text
+  | Link
+      { linkText :: [InlineText],
+        url :: Text,
+        title :: Maybe Text
+      }
+  | Image
+      { altText :: [InlineText],
+        url :: Text,
+        title :: Maybe Text
+      }
+  | HTMLInline
+      { tagName :: Text,
+        attributes :: [(Text, Maybe Text)]
+      }
 
 -- for processing math
 -- https://hackage.haskell.org/package/typst-0.6.1/docs/Typst-Parse.html#v:parseTypst
