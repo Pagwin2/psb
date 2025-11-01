@@ -66,17 +66,23 @@ htmlInline = do
   remaining <- htmlInlineRemainder
   whiteSpace
   char '>'
-  let remainingTagText = foldl' (\ongoing  current -> ongoing ++ ' ' : current) "" remaining
+  let remainingTagText = foldl' (\ongoing current -> ongoing ++ ' ' : current) "" remaining
 
   pure $ HTMLIn $ pack $ '<' : name ++ remaining
   where
     htmlInlineRemainder = many $ whiteSpace *> attribute
     name = many $ choice [alphaNum, char '-', char ':']
+    value = do
+      char '"'
+      l <- letter
+      rem <- many $ choice [alphaNum, char '-', char ':']
+      char '"'
+      pure '"' : l : rem ++ "\""
     attribute = do
-        attrName <- name
-        char '='
-        attrValue <- value
-        pure attrName ++ '=' : 
+      attrName <- name
+      char '='
+      attrValue <- value
+      pure attrName ++ ('=' : attrValue)
 
 whiteSpace :: Parser Text
 whiteSpace = pack <$> many space
