@@ -148,10 +148,9 @@ rss =
 -- Shake.putInfo $ "Built " <> target
 
 readPost :: FilePath -> Action Post
-readPost postPath = do
-  case FP.takeExtension postPath of
-    ".md" -> readMarkdownPost postPath
-    _ -> error $ "unknown file extension for file" <> postPath
+readPost postPath = case FP.takeExtension postPath of
+  ".md" -> readMarkdownPost postPath
+  _ -> error $ "unknown file extension for file" <> postPath
 
 readMarkdownPost :: FilePath -> Action Post
 readMarkdownPost postPath = do
