@@ -44,7 +44,7 @@ data HTML
   = HTMLTag
   { tagName :: Text,
     attributes :: [(Text, Maybe Text)],
-    content :: Text
+    html_content :: Text
   }
 
 -- Optionally skip: HTMLComment, HTMLDeclaration
@@ -55,7 +55,7 @@ data InlineText
   = Text Text -- Combined Normal and Escaped
   | Bold [InlineText]
   | Italic [InlineText]
-  | Code Text
+  | InlineCode Text
   | Link
       { linkText :: [InlineText],
         url :: Text,
@@ -67,8 +67,8 @@ data InlineText
         title :: Maybe Text
       }
   | HTMLInline
-      { tagName :: Text,
-        attributes :: [(Text, Maybe Text)]
+      { inlineTagName :: Text,
+        inlineAttributes :: [(Text, Maybe Text)]
       }
 
 -- for processing math
