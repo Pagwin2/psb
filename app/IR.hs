@@ -39,16 +39,12 @@ data List = L
     items :: [ListItem]
   }
 
--- Table: keep as-is or simplify based on your needs
-
 data HTML
   = HTMLTag
   { tagName :: Text,
     attributes :: [(Text, Maybe Text)],
     html_content :: Text
   }
-
--- Optionally skip: HTMLComment, HTMLDeclaration
 
 newtype Paragraph = P [InlineText]
 
@@ -63,7 +59,7 @@ data InlineText
         title :: Maybe Text
       }
   | Image
-      { altText :: [InlineText],
+      { altText :: Text,
         url :: Text,
         title :: Maybe Text
       }
