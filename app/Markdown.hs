@@ -2,10 +2,11 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-module Markdown (document, metadata) where
+-- (document, metadata)
+module Markdown where
 
 import Control.Applicative (many, optional, some, (<|>))
-import Control.Monad (guard, void, when)
+import Control.Monad (guard, void)
 import Data.Char (isAlpha)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -175,7 +176,6 @@ orderedListItem = do
 -- HTML Block
 htmlBlock :: Parser Element
 htmlBlock = do
-  start <- getPosition
   char '<'
   -- Capture the entire HTML block as raw text
   rest <- manyTill anyChar (try $ char '>' >> lineEnding)
@@ -219,10 +219,10 @@ paragraphBlock = do
   notFollowedBy (string "```" <|> string "~~~")
   notFollowedBy (count 4 (char ' ' <|> char '\t'))
   notFollowedBy (count 3 (char '*') <|> count 3 (char '-') <|> count 3 (char '_'))
-  notFollowedBy (char '<')
+  -- notFollowedBy (char '<')
 
   content <- some inlineElement
-  lineEnding
+  lineEnding <|> eof
   pure $ Paragraph $ P content
 
 -- Inline Elements
@@ -400,14 +400,14 @@ plainText = Text . T.pack <$> some plainTextChar
 
 plainTextChar :: Parser Char
 plainTextChar = satisfy $ \c ->
-  (c `notElem` ("*_`[!<\\\n\r" :: String)) && c >= ' '
+  (c `notElem` ("*_`[<\\\n\r" :: String)) && c >= ' '
 
 plainTextNoAsterisk :: Parser InlineText
 plainTextNoAsterisk =
   Text . T.pack
     <$> some
       ( satisfy $ \c ->
-          (c `notElem` ("*_`[!<\\\n\r" :: String)) && c >= ' '
+          (c `notElem` ("*_`[<\\\n\r" :: String)) && c >= ' '
       )
 
 plainTextNoUnderscore :: Parser InlineText
@@ -415,7 +415,7 @@ plainTextNoUnderscore =
   Text . T.pack
     <$> some
       ( satisfy $ \c ->
-          not (c `elem` ("_*`[!<\\\n\r" :: String)) && c >= ' '
+          not (c `elem` ("_*`[<\\\n\r" :: String)) && c >= ' '
       )
 
 plainTextNoBracket :: Parser InlineText
@@ -423,7 +423,7 @@ plainTextNoBracket =
   Text . T.pack
     <$> some
       ( satisfy $ \c ->
-          not (c `elem` ("]_*`[!<\\\n\r" :: String)) && c >= ' '
+          not (c `elem` ("]_*`[<\\\n\r" :: String)) && c >= ' '
       )
 
 -- Helper Parsers

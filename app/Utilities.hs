@@ -2,8 +2,6 @@ module Utilities where
 
 import Config
 import Control.Monad (filterM)
-import Data.Aeson (Result (Error, Success))
-import qualified Data.Aeson as A
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -39,9 +37,13 @@ indexHtmlMarkdownSourcePath =
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
   content <- Shake.readFile' filePath
-  -- TODO: error handling
-  let Right (metadataText, document) = parse (liftA2 (,) Markdown.metadata Markdown.document) filePath content
-  let Right metadata = decodeEither' $ encodeUtf8 metadataText
+  let (metadataText, document) = case parse (liftA2 (,) Markdown.metadata Markdown.document) filePath content of
+        Right (a, b) -> (a, b)
+        Left e -> error $ show e
+
+  let metadata = case decodeEither' $ encodeUtf8 metadataText of
+        Right m -> m
+        Left e -> error $ show e
   pure (metadata, compileToHTML document)
 
 now :: Action T.Text
@@ -51,8 +53,12 @@ markdownToPost :: FilePath -> Action Post
 markdownToPost path = do
   content <- Shake.readFile' path
   -- TODO: error handling
-  let Right postData = parse Markdown.metadata path content
-  let Right post = decodeEither' $ encodeUtf8 postData
+  let postData = case parse Markdown.metadata path content of
+        Right p -> p
+        Left e -> error $ show e
+  let post = case decodeEither' $ encodeUtf8 postData of
+        Right p -> p
+        Left e -> error $ show e
   pure post
 
 yamlToPost :: FilePath -> Action Post
