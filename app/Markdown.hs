@@ -174,37 +174,13 @@ orderedListItem = do
 
 -- HTML Block
 htmlBlock :: Parser Element
-htmlBlock = char '<' *> choice [try htmlCommentBlock, try htmlDeclarationBlock, htmlTagBlock]
-
-htmlCommentBlock :: Parser Element
-htmlCommentBlock = do
-  string "!--"
-  content <- manyTill anyChar (try $ string "-->")
-  lineEnding
-  pure $ HTML $ HTMLTag "!--" [] (T.pack content)
-
-htmlDeclarationBlock :: Parser Element
-htmlDeclarationBlock = do
-  char '!'
-  decl <- some (satisfy isAlpha)
-  rest <- many (noneOf ">\n\r")
-  char '>'
-  lineEnding
-  pure $ HTML $ HTMLTag (T.pack $ "!" ++ decl) [] (T.pack rest)
-
-htmlTagBlock :: Parser Element
-htmlTagBlock = do
-  name <- Markdown.tagName
-  attrs <- many (try $ wsParser >> attribute)
-  optional wsParser
-  selfClose <- option False (char '/' >> pure True)
-  char '>'
-  content <-
-    if selfClose
-      then pure ""
-      else manyTill anyChar (try $ string "</" >> string name >> char '>')
-  when (not selfClose) lineEnding
-  pure $ HTML $ HTMLTag (T.pack name) attrs (T.pack content)
+htmlBlock = do
+  start <- getPosition
+  char '<'
+  -- Capture the entire HTML block as raw text
+  rest <- manyTill anyChar (try $ char '>' >> lineEnding)
+  let content = '<' : rest
+  return $ HTML $ HTMLTag (T.pack content)
 
 tagName :: Parser String
 tagName = do
@@ -353,10 +329,10 @@ image :: Parser InlineText
 image = do
   char '!'
   char '['
-  alt <- some (notFollowedBy (char ']') >> inlineElementNoBracket)
+  alt <- T.pack <$> many (noneOf "]\n\r")
   char ']'
   (url, title) <- linkDestination
-  pure $ Image alt url title
+  return $ Image {altText = alt, url = url, title = title}
 
 -- Link
 link :: Parser InlineText
@@ -407,13 +383,9 @@ titleParser =
 -- HTML Inline
 htmlInline :: Parser InlineText
 htmlInline = do
-  char '<'
-  name <- Markdown.tagName
-  attrs <- many (try $ wsParser >> attribute)
-  optional wsParser
-  _ <- option False (char '/' >> pure True)
-  char '>'
-  pure $ HTMLInline (T.pack name) attrs
+  start <- char '<'
+  content <- manyTill anyChar (try $ char '>')
+  return $ HTMLInline (T.pack (start : content ++ ">"))
 
 -- Escaped Character
 escapedChar :: Parser InlineText

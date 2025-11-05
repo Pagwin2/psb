@@ -41,10 +41,12 @@ indexHtmlMarkdownSourcePath =
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
   content <- Shake.readFile' filePath
+  -- TODO: error handling
   let Right (metadataText, document) = parse (liftA2 (,) Markdown.metadata Markdown.document) filePath content
   let Right metadata = decodeEither' $ encodeUtf8 metadataText
   pure (metadata, compileToHTML document)
 
+markdownToHtml_ :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml_ filePath = do
   content <- Shake.readFile' filePath
   Shake.quietly . Shake.traced "Markdown to HTML" $ do
@@ -89,6 +91,14 @@ now = Shake.liftIO $ fmap (T.pack . iso8601Show) getCurrentTime
 
 markdownToPost :: FilePath -> Action Post
 markdownToPost path = do
+  content <- Shake.readFile' path
+  -- TODO: error handling
+  let Right postData = parse Markdown.metadata path content
+  let Right post = decodeEither' $ encodeUtf8 postData
+  pure post
+
+markdownToPost_ :: FilePath -> Action Post
+markdownToPost_ path = do
   content <- Shake.readFile' path
   (Pandoc meta _) <-
     Shake.liftIO . runPandoc . Pandoc.readMarkdown readerOptions . T.pack $ content

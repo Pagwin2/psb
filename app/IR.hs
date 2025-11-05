@@ -41,9 +41,7 @@ data List = L
 
 data HTML
   = HTMLTag
-  { tagName :: Text,
-    attributes :: [(Text, Maybe Text)],
-    html_content :: Text
+  { html_content :: Text
   }
 
 newtype Paragraph = P [InlineText]
@@ -63,10 +61,7 @@ data InlineText
         url :: Text,
         title :: Maybe Text
       }
-  | HTMLInline
-      { inlineTagName :: Text,
-        inlineAttributes :: [(Text, Maybe Text)]
-      }
+  | HTMLInline {inline_html_content :: Text}
 
 -- for processing math
 -- https://hackage.haskell.org/package/typst-0.6.1/docs/Typst-Parse.html#v:parseTypst
