@@ -41,7 +41,7 @@ element =
 blankLines :: Parser Element
 blankLines = do
   skipMany1 blankLine
-  element -- Parse the next element
+  element <|> fmap (const $ HTML HTMLTag {html_content = ""}) eof -- Parse the next element (or handle eof)
 
 blankLine :: Parser ()
 blankLine = do
@@ -65,7 +65,7 @@ fencedCodeBlock = do
   fence <- string "```" <|> string "~~~"
   lang <- optionMaybe languageInfo
   lineEnding
-  codeLines <- manyTill codeLine (try $ string fence >> lineEnding)
+  codeLines <- manyTill codeLine (try $ string fence)
   pure $ Code $ C lang (T.pack $ unlines codeLines)
 
 languageInfo :: Parser Text
@@ -123,9 +123,9 @@ unorderedListItem = do
   oneOf "*-+"
   char ' ' <|> char '\t'
   content <- manyTill inlineElement (try lineEnding)
-  continuations <- many listContinuation
+  -- continuations <- many listContinuation
   children <- many (try indentedList)
-  pure $ LI (content ++ concat continuations) children
+  pure $ LI content children
 
 listContinuation :: Parser [InlineText]
 listContinuation = do
@@ -136,9 +136,11 @@ listContinuation = do
   content <- manyTill inlineElement (try lineEnding)
   pure content
 
+-- TODO: handle list indentation at all levels
 indentedList :: Parser List
 indentedList = do
-  void $ count 2 (char ' ' <|> char '\t')
+  let n = 1
+  void $ count (4 * n) (char ' ') <|> count n (char '\t')
   choice [try indentedUnorderedList, indentedOrderedList]
 
 indentedUnorderedList :: Parser List
@@ -154,7 +156,7 @@ indentedOrderedList = do
 indentedListItem :: Parser () -> Parser ListItem
 indentedListItem marker = do
   marker
-  content <- manyTill inlineElement (try lineEnding)
+  content <- manyTill inlineElement (try $ lineEnding <|> eof)
   pure $ LI content []
 
 -- Ordered List Block
@@ -211,16 +213,6 @@ attributeValue =
 -- Paragraph Block
 paragraphBlock :: Parser Element
 paragraphBlock = do
-  -- Make sure we're not starting another block element
-  notFollowedBy (char '#')
-  notFollowedBy (char '>')
-  notFollowedBy (oneOf "*-+" >> (char ' ' <|> char '\t'))
-  notFollowedBy (digit >> char '.')
-  notFollowedBy (string "```" <|> string "~~~")
-  notFollowedBy (count 4 (char ' ' <|> char '\t'))
-  notFollowedBy (count 3 (char '*') <|> count 3 (char '-') <|> count 3 (char '_'))
-  -- notFollowedBy (char '<')
-
   content <- some inlineElement
   lineEnding <|> eof
   pure $ Paragraph $ P content
@@ -264,7 +256,6 @@ emphasis = emphasisAsterisk <|> emphasisUnderscore
 emphasisAsterisk :: Parser InlineText
 emphasisAsterisk = do
   char '*'
-  notFollowedBy (char '*')
   content <- some (notFollowedBy (char '*') >> inlineElementNoAsterisk)
   char '*'
   pure $ Italic content
@@ -272,8 +263,7 @@ emphasisAsterisk = do
 emphasisUnderscore :: Parser InlineText
 emphasisUnderscore = do
   char '_'
-  notFollowedBy (char '_')
-  content <- some (notFollowedBy (char '_') >> inlineElementNoUnderscore)
+  content <- some inlineElementNoUnderscore
   char '_'
   pure $ Italic content
 
@@ -399,32 +389,20 @@ plainText :: Parser InlineText
 plainText = Text . T.pack <$> some plainTextChar
 
 plainTextChar :: Parser Char
-plainTextChar = satisfy $ \c ->
-  (c `notElem` ("*_`[<\\\n\r" :: String)) && c >= ' '
+plainTextChar = noneOf "\n"
 
 plainTextNoAsterisk :: Parser InlineText
-plainTextNoAsterisk =
-  Text . T.pack
-    <$> some
-      ( satisfy $ \c ->
-          (c `notElem` ("*_`[<\\\n\r" :: String)) && c >= ' '
-      )
+plainTextNoAsterisk = fmap (Text . T.pack) $ some $ noneOf "*\n"
 
 plainTextNoUnderscore :: Parser InlineText
-plainTextNoUnderscore =
-  Text . T.pack
-    <$> some
-      ( satisfy $ \c ->
-          not (c `elem` ("_*`[<\\\n\r" :: String)) && c >= ' '
-      )
+plainTextNoUnderscore = fmap (Text . T.pack) $ some $ noneOf "_\n"
 
 plainTextNoBracket :: Parser InlineText
 plainTextNoBracket =
-  Text . T.pack
-    <$> some
-      ( satisfy $ \c ->
-          not (c `elem` ("]_*`[<\\\n\r" :: String)) && c >= ' '
-      )
+  fmap (Text . T.pack) $
+    some $
+      satisfy
+        (`notElem` ("[]" :: String))
 
 -- Helper Parsers
 lineEnding :: Parser ()

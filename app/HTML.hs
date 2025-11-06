@@ -15,7 +15,7 @@ compileToHTML (Doc elements) = T.concat $ map elementToHTML elements
 elementToHTML :: Element -> T.Text
 elementToHTML (Heading (H {level, text})) = T.concat ["<h", tshow level, ">", serializeInlineToHTML text, "</h", tshow level, ">"]
 --
-elementToHTML (Code (C {language = m_language, code})) = T.concat ["<pre class=\"sourceCode ", language, "\"><code class=\"sourceCode ", language, "\">", code, "</code>"]
+elementToHTML (Code (C {language = m_language, code})) = T.concat ["<pre class=\"sourceCode ", language, "\"><code class=\"sourceCode ", language, "\">", code, "</code>", "</pre>"]
   where
     language = fromMaybe "" m_language
 elementToHTML (BlockQuote (Q elems)) = T.concat ["<blockquote>", serializeInlineToHTML elems, "</blockquote>"]
