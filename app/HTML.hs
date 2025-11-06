@@ -13,11 +13,11 @@ compileToHTML :: Document -> T.Text
 compileToHTML (Doc elements) = T.concat $ map elementToHTML elements
 
 elementToHTML :: Element -> T.Text
-elementToHTML (Heading (H {level, text})) = T.concat ["<h", tshow level, ">", serializeInlineToHTML text, "</h", tshow level, ">"]
+elementToHTML (Heading header) = T.concat ["<h", tshow header.level, ">", serializeInlineToHTML header.text, "</h", tshow header.level, ">"]
 --
-elementToHTML (Code (C {language = m_language, code})) = T.concat ["<pre class=\"sourceCode ", language, "\"><code class=\"sourceCode ", language, "\">", code, "</code>", "</pre>"]
+elementToHTML (Code code_block) = T.concat ["<pre class=\"sourceCode ", language, "\"><code class=\"sourceCode ", language, "\">", code_block.code, "</code>", "</pre>"]
   where
-    language = fromMaybe "" m_language
+    language = fromMaybe "" code_block.language
 elementToHTML (BlockQuote (Q elems)) = T.concat ["<blockquote>", serializeInlineToHTML elems, "</blockquote>"]
 elementToHTML (List (L {list_type = Ordered, items})) = T.concat ["<ol>", generateLiElems items, "</ol>"]
 elementToHTML (List (L {list_type = Unordered, items})) = T.concat ["<ul>", generateLiElems items, "</ul>"]
@@ -27,13 +27,13 @@ elementToHTML HorizontalRule = "<hr>"
 
 generateLiElems :: [ListItem] -> T.Text
 generateLiElems [] = ""
-generateLiElems (LI {content, children} : remainder) =
+generateLiElems (element : remainder) =
   T.concat
     [ "<li>",
       -- We assume child lists are stricly after our contents
       -- if they aren't this is fucked
-      serializeInlineToHTML content,
-      T.concat $ map (elementToHTML . List) children,
+      serializeInlineToHTML element.content,
+      T.concat $ map (elementToHTML . List) element.children,
       "</li>",
       generateLiElems remainder
     ]
