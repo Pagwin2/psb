@@ -31,7 +31,7 @@ executable psb
 
     other-modules: Config Utilities Templates Types IR Markdown Restruct HTML
 
-    default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric
+    default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields
 
     -- Other library packages from which modules are imported.
     -- https://hackage.haskell.org/package/texmath
