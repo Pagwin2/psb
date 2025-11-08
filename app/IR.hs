@@ -57,6 +57,7 @@ data InlineText
   = Text Text -- Combined Normal and Escaped
   | Bold [InlineText]
   | Italic [InlineText]
+  | Crossed [InlineText]
   | InlineCode Text
   | Link
       { linkText :: [InlineText],

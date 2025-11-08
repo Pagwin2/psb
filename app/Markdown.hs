@@ -223,6 +223,7 @@ inlineElement =
   choice
     [ try strong,
       try emphasis,
+      try crossedText,
       try codeSpan,
       try image,
       try link,
@@ -249,6 +250,13 @@ strongUnderscore = do
   string "__"
   pure $ Bold content
 
+crossedText :: Parser InlineText
+crossedText = do
+  string "~~"
+  content <- some (notFollowedBy (string "~~") >> inlineElementNo '~')
+  string "~~"
+  pure $ Crossed content
+
 -- Emphasis (Italic)
 emphasis :: Parser InlineText
 emphasis = emphasisAsterisk <|> emphasisUnderscore
@@ -267,6 +275,21 @@ emphasisUnderscore = do
   char '_'
   pure $ Italic content
 
+inlineElementNo :: Char -> Parser InlineText
+inlineElementNo c =
+  choice
+    [ try strong,
+      try codeSpan,
+      try image,
+      try link,
+      try htmlInline,
+      try escapedChar,
+      plainTextNo c
+    ]
+
+plainTextNo :: Char -> Parser InlineText
+plainTextNo c = fmap (Text . T.pack) $ some $ noneOf [c, '\n']
+
 inlineElementNoAsterisk :: Parser InlineText
 inlineElementNoAsterisk =
   choice
@@ -276,7 +299,7 @@ inlineElementNoAsterisk =
       try link,
       try htmlInline,
       try escapedChar,
-      plainTextNoAsterisk
+      plainTextNo '*'
     ]
 
 inlineElementNoUnderscore :: Parser InlineText
@@ -288,7 +311,7 @@ inlineElementNoUnderscore =
       try link,
       try htmlInline,
       try escapedChar,
-      plainTextNoUnderscore
+      plainTextNo '_'
     ]
 
 -- Code Span
@@ -385,11 +408,12 @@ escapedChar = do
   pure $ Text (T.singleton c)
 
 -- Plain Text
+-- TODO: this eats stuff it shouldn't, inefficient solution is to try other inline elements and exit if they succeed
 plainText :: Parser InlineText
-plainText = Text . T.pack <$> some plainTextChar
+plainText = fmap (Text . T.pack) (liftA2 (:) (noneOf "\n") $ many plainTextChar)
 
 plainTextChar :: Parser Char
-plainTextChar = noneOf "\n"
+plainTextChar = noneOf "\n[~`_*"
 
 plainTextNoAsterisk :: Parser InlineText
 plainTextNoAsterisk = fmap (Text . T.pack) $ some $ noneOf "*\n"
