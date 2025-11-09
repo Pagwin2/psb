@@ -1,14 +1,12 @@
-- add rst support and convert markdown handling to custom parser instead of pandoc
+- [ ] add rst support and convert markdown handling to custom parser instead of pandoc
 
-- process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
+- [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
 
-- minify js and css when copying over instead of just copying
+- [ ] minify js and css when copying over instead of just copying
 
-- setup fingerprinting in file names for css and js
+- [ ] setup fingerprinting in file names for css and js
 
-- dev server setup (with live reloading)
+- [ ] dev server setup (with live reloading)
 
-- see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
-
-- look into adding postcss support perhaps
+-  [ ] see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)

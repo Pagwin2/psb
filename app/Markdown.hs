@@ -253,7 +253,7 @@ strongUnderscore = do
 crossedText :: Parser InlineText
 crossedText = do
   string "~~"
-  content <- some (notFollowedBy (string "~~") >> inlineElementNo '~')
+  content <- some (notFollowedBy (string "~~") >> inlineElement)
   string "~~"
   pure $ Crossed content
 
@@ -284,35 +284,23 @@ inlineElementNo c =
       try link,
       try htmlInline,
       try escapedChar,
-      plainTextNo c
+      plainTextNo [c]
     ]
 
-plainTextNo :: Char -> Parser InlineText
-plainTextNo c = fmap (Text . T.pack) $ some $ noneOf [c, '\n']
+plainTextNo :: [Char] -> Parser InlineText
+plainTextNo disallow = do
+  firstChar <- noneOf disallow
+  remChars <- some $ plainTextCharNo disallow <* notFollowedBy lineEnding
+  pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
+  where
+    wspHandler '\n' = ' '
+    wspHandler c = c
 
 inlineElementNoAsterisk :: Parser InlineText
-inlineElementNoAsterisk =
-  choice
-    [ try strong,
-      try codeSpan,
-      try image,
-      try link,
-      try htmlInline,
-      try escapedChar,
-      plainTextNo '*'
-    ]
+inlineElementNoAsterisk = inlineElementNo '*'
 
 inlineElementNoUnderscore :: Parser InlineText
-inlineElementNoUnderscore =
-  choice
-    [ try strong,
-      try codeSpan,
-      try image,
-      try link,
-      try htmlInline,
-      try escapedChar,
-      plainTextNo '_'
-    ]
+inlineElementNoUnderscore = inlineElementNo '_'
 
 -- Code Span
 codeSpan :: Parser InlineText
@@ -408,29 +396,27 @@ escapedChar = do
   pure $ Text (T.singleton c)
 
 -- Plain Text
--- TODO: this eats stuff it shouldn't, inefficient solution is to try other inline elements and exit if they succeed
 plainText :: Parser InlineText
-plainText = fmap (Text . T.pack) (liftA2 (:) (noneOf "\n") $ many plainTextChar)
+plainText = plainTextNo []
 
-plainTextChar :: Parser Char
-plainTextChar = noneOf "\n[~`_*"
+plainTextBaseDisallow :: [Char]
+plainTextBaseDisallow = "[~`_*<"
+
+plainTextCharNo :: [Char] -> Parser Char
+plainTextCharNo additional = noneOf $ additional <> plainTextBaseDisallow
 
 plainTextNoAsterisk :: Parser InlineText
-plainTextNoAsterisk = fmap (Text . T.pack) $ some $ noneOf "*\n"
+plainTextNoAsterisk = plainTextNo "*"
 
 plainTextNoUnderscore :: Parser InlineText
-plainTextNoUnderscore = fmap (Text . T.pack) $ some $ noneOf "_\n"
+plainTextNoUnderscore = plainTextNo "_"
 
 plainTextNoBracket :: Parser InlineText
-plainTextNoBracket =
-  fmap (Text . T.pack) $
-    some $
-      satisfy
-        (`notElem` ("[]" :: String))
+plainTextNoBracket = plainTextNo "[]"
 
 -- Helper Parsers
 lineEnding :: Parser ()
-lineEnding = void (try (string "\r\n") <|> try (string "\n") <|> string "\r")
+lineEnding = void $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")
 
 wsParser :: Parser ()
 wsParser = void $ some (char ' ' <|> char '\t')

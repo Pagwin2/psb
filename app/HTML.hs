@@ -2,6 +2,7 @@
 
 module HTML (compileToHTML) where
 
+import Data.Char (isAlphaNum, toLower)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import IR
@@ -19,6 +20,23 @@ escapeChar c = T.singleton c
 escapeText :: T.Text -> T.Text
 escapeText = T.concat . map escapeChar . T.unpack
 
+genHeaderId :: Heading -> T.Text
+genHeaderId header =
+  T.concat
+    [ " id=\"",
+      T.map (toLower . textSub) $
+        T.strip $
+          T.filter (\c -> isAlphaNum c || c == ' ') $
+            serializeInlineToHTML header.text,
+      "\" "
+    ]
+  where
+    textSub ' ' = '-'
+    textSub c = c
+
+genHeaderClasses :: Heading -> T.Text
+genHeaderClasses = const ""
+
 tshow :: (Show s) => s -> T.Text
 tshow = T.pack . show
 
@@ -26,7 +44,7 @@ compileToHTML :: Document -> T.Text
 compileToHTML (Doc elements) = T.concat $ map elementToHTML elements
 
 elementToHTML :: Element -> T.Text
-elementToHTML (Heading header) = T.concat ["<h", tshow header.level, ">", serializeInlineToHTML header.text, "</h", tshow header.level, ">"]
+elementToHTML (Heading header) = T.concat ["<h", tshow header.level, genHeaderId header, genHeaderClasses header, ">", serializeInlineToHTML header.text, "</h", tshow header.level, ">"]
 --
 elementToHTML (Code code_block) = T.concat ["<pre class=\"sourceCode ", language, "\"><code class=\"sourceCode ", language, "\">", escapeText code_block.code, "</code>", "</pre>"]
   where
@@ -58,6 +76,6 @@ serializeInlineToHTML (Bold elems : remaining) = T.concat ["<b>", serializeInlin
 serializeInlineToHTML (Italic elems : remaining) = T.concat ["<i>", serializeInlineToHTML elems, "</i>", serializeInlineToHTML remaining]
 serializeInlineToHTML (Crossed elems : remaining) = T.concat ["<s>", serializeInlineToHTML elems, "</s>", serializeInlineToHTML remaining]
 serializeInlineToHTML (InlineCode code : remaining) = T.concat ["<code>", escapeText code, "</code>", serializeInlineToHTML remaining]
-serializeInlineToHTML (Link {linkText, url, title} : remaining) = T.concat ["<a href=\"", url, "\" ", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, "\">", serializeInlineToHTML linkText, "</a>", serializeInlineToHTML remaining]
+serializeInlineToHTML (Link {linkText, url, title} : remaining) = T.concat ["<a href=\"", url, "\"", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, ">", serializeInlineToHTML linkText, "</a>", serializeInlineToHTML remaining]
 serializeInlineToHTML (Image {altText, url, title} : remaining) = T.concat ["<img src=\">", url, "\" alt=\"", escapeText altText, "\"", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, ">", serializeInlineToHTML remaining]
 serializeInlineToHTML (HTMLInline {inline_html_content} : remaining) = inline_html_content <> serializeInlineToHTML remaining
