@@ -1,4 +1,5 @@
 - [ ] add rst support and convert markdown handling to custom parser instead of pandoc
+  - [ ] Get megaparsec pretty error message in bin build (errorBundlePretty)
 
 - [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
