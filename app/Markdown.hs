@@ -10,12 +10,37 @@ import Control.Monad (guard, void)
 import Data.Char (isAlpha)
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Void (Void)
 import IR
-import Text.Parsec hiding (Line, many, optional, (<|>))
-import Text.Parsec.String (Parser)
+import Text.Megaparsec (Parsec, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try)
+import qualified Text.Megaparsec as MP
+import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
+
+type Parser = Parsec Void String
+
+anyChar :: Parser Char
+anyChar = anySingle
+
+alphaNum :: Parser Char
+alphaNum = alphaNumChar
+
+digit :: Parser Char
+digit = digitChar
+
+noneOf :: [Char] -> Parser Char
+noneOf = MP.noneOf
+
+oneOf :: [Char] -> Parser Char
+oneOf = MP.oneOf
+
+optionMaybe :: Parser a -> Parser (Maybe a)
+optionMaybe = optional
+
+skipMany1 :: Parser a -> Parser ()
+skipMany1 = skipSome
 
 metadata :: Parser Text
-metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (string "--")) <|> noneOf "-") <* bound
+metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (string "--")) <|> anySingleBut '-') <* bound
   where
     bound = string "---"
 
@@ -69,11 +94,11 @@ fencedCodeBlock = do
   pure $ Code $ C lang (T.pack $ unlines codeLines)
 
 languageInfo :: Parser Text
-languageInfo = T.pack <$> many1 (alphaNum <|> char '-' <|> char '+' <|> char '.')
+languageInfo = T.pack <$> some (alphaNum <|> char '-' <|> char '+' <|> char '.')
 
 codeLine :: Parser String
 codeLine = do
-  line <- many (noneOf "\n\r")
+  line <- many $ noneOf "\n\r"
   lineEnding
   pure line
 
@@ -85,7 +110,7 @@ indentedCodeBlock = do
   where
     indentedLine = do
       count 4 (char ' ' <|> char '\t')
-      line <- many (noneOf "\n\r")
+      line <- many $ noneOf "\n\r"
       lineEnding
       pure line
 
@@ -205,9 +230,9 @@ attributeName = do
 attributeValue :: Parser String
 attributeValue =
   choice
-    [ between (char '"') (char '"') (many $ noneOf "\""),
-      between (char '\'') (char '\'') (many $ noneOf "'"),
-      some (noneOf " \t\n\r>\"'=<`")
+    [ between (char '"') (char '"') (many $ anySingleBut '"'),
+      between (char '\'') (char '\'') (many $ anySingleBut '\''),
+      some $ noneOf " \t\n\r>\"'=<`"
     ]
 
 -- Paragraph Block
@@ -313,7 +338,7 @@ codeSpan =
   where
     singleBacktick = do
       char '`'
-      content <- many (noneOf "`\n\r")
+      content <- many $ noneOf "`\n\r"
       char '`'
       pure $ InlineCode (T.pack content)
     doubleBacktick = do
@@ -360,7 +385,7 @@ linkDestination = directLink <|> referenceLink
   where
     directLink = do
       char '('
-      url <- many (noneOf " \t\n\r)")
+      url <- many $ noneOf " \t\n\r)"
       title <- optionMaybe (try $ some (char ' ' <|> char '\t') >> titleParser)
       char ')'
       pure (T.pack url, title)
@@ -376,9 +401,9 @@ titleParser :: Parser Text
 titleParser =
   T.pack
     <$> choice
-      [ between (char '"') (char '"') (many $ noneOf "\""),
-        between (char '\'') (char '\'') (many $ noneOf "'"),
-        between (char '(') (char ')') (many $ noneOf ")")
+      [ between (char '"') (char '"') (many $ anySingleBut '"'),
+        between (char '\'') (char '\'') (many $ anySingleBut '\''),
+        between (char '(') (char ')') (many $ anySingleBut ')')
       ]
 
 -- HTML Inline

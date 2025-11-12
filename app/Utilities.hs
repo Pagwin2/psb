@@ -15,7 +15,7 @@ import Development.Shake.FilePath ((<.>), (</>))
 import qualified Development.Shake.FilePath as FP
 import HTML
 import Markdown
-import Text.Parsec hiding (Error)
+import Text.Megaparsec (parse)
 import Types
 
 indexHtmlOutputPath :: FilePath -> FilePath
