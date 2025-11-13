@@ -12,7 +12,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import IR
-import Text.Megaparsec (Parsec, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try)
+import Text.Megaparsec (Parsec, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
 
@@ -50,16 +50,16 @@ document = Doc <$> many element <* eof
 element :: Parser Element
 element =
   choice
-    [ try headingBlock,
-      try fencedCodeBlock,
-      try indentedCodeBlock,
-      try blockquoteBlock,
-      try unorderedListBlock,
-      try orderedListBlock,
-      try horizontalRuleBlock,
-      try htmlBlock,
-      try blankLines, -- Consume blank lines but don't add to AST
-      paragraphBlock
+    [ try headingBlock <?> "Element Heading",
+      try fencedCodeBlock <?> "Fenced Code Block",
+      try indentedCodeBlock <?> "Indented Code Block",
+      try blockquoteBlock <?> "BlockQuote",
+      try unorderedListBlock <?> "Unordered List",
+      try orderedListBlock <?> "Ordered List",
+      try horizontalRuleBlock <?> "Horizontal Rule",
+      try htmlBlock <?> "HTML Block",
+      try blankLines <?> "Blank Lines", -- Consume blank lines but don't add to AST
+      paragraphBlock <?> "Paragarph"
     ]
 
 -- Blank lines (consumed but not stored)
@@ -77,11 +77,11 @@ blankLine = do
 -- Heading Block
 headingBlock :: Parser Element
 headingBlock = do
-  hashes <- some (char '#')
+  hashes <- some (char '#') <?> "Heading Hashes"
   let level = length hashes
-  guard (level <= 6)
-  many (char ' ' <|> char '\t')
-  content <- manyTill inlineElement (try lineEnding)
+  guard (level <= 6) <?> "Higher than level 6"
+  many (char ' ' <|> char '\t') <?> "Pre-Text Whitespace"
+  content <- manyTill (inlineElement <?> "Header Text") (try lineEnding <?> "Header Ending")
   pure $ Heading $ H level content
 
 -- Fenced Code Block
@@ -246,15 +246,15 @@ paragraphBlock = do
 inlineElement :: Parser InlineText
 inlineElement =
   choice
-    [ try strong,
-      try emphasis,
-      try crossedText,
-      try codeSpan,
-      try image,
-      try link,
-      try htmlInline,
-      try escapedChar,
-      plainText
+    [ try strong <?> "Inline Strong Text",
+      try emphasis <?> "Inline Italic Text",
+      try crossedText <?> "Inline Crossed Text",
+      try codeSpan <?> "Inline Code",
+      try image <?> "Inline Image",
+      try link <?> "Inline Link",
+      try htmlInline <?> "Inline HTML",
+      try escapedChar <?> "Escaped Character",
+      plainText <?> "Inline Plain Text"
     ]
 
 -- Strong (Bold)
@@ -314,8 +314,8 @@ inlineElementNo c =
 
 plainTextNo :: [Char] -> Parser InlineText
 plainTextNo disallow = do
-  firstChar <- noneOf disallow
-  remChars <- some $ plainTextCharNo disallow <* notFollowedBy lineEnding
+  firstChar <- noneOf disallow <?> "Plain Text Initial Disallow"
+  remChars <- manyTill (plainTextCharNo disallow) lineEnding <?> "Remaining Characters"
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
   where
     wspHandler '\n' = ' '
@@ -422,7 +422,7 @@ escapedChar = do
 
 -- Plain Text
 plainText :: Parser InlineText
-plainText = plainTextNo []
+plainText = plainTextNo [] <?> "Baseline Plain Text"
 
 plainTextBaseDisallow :: [Char]
 plainTextBaseDisallow = "[~`_*<"
@@ -441,7 +441,7 @@ plainTextNoBracket = plainTextNo "[]"
 
 -- Helper Parsers
 lineEnding :: Parser ()
-lineEnding = void $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")
+lineEnding = void (try $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")) <|> eof
 
 wsParser :: Parser ()
 wsParser = void $ some (char ' ' <|> char '\t')
