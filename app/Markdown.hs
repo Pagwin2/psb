@@ -24,6 +24,12 @@ type Parser = ParserT IO
 log_ :: String -> Parser ()
 log_ = lift . putStrLn
 
+logP :: (Show s) => Parser s -> Parser s
+logP v = do
+  underlying <- v
+  log_ $ show underlying
+  v
+
 anyChar :: Parser Char
 anyChar = anySingle
 
@@ -71,7 +77,7 @@ element =
 -- Blank lines (consumed but not stored)
 blankLines :: Parser Element
 blankLines = do
-  skipMany1 blankLine
+  skipMany1 (blankLine *> notFollowedBy eof)
   element <|> fmap (const $ HTML HTMLTag {html_content = ""}) eof -- Parse the next element (or handle eof)
 
 blankLine :: Parser ()
@@ -84,11 +90,11 @@ blankLine = do
 headingBlock :: Parser Element
 headingBlock = do
   hashes <- some (char '#') <?> "Heading Hashes"
-  log_ "heading"
   let level = length hashes
   guard (level <= 6) <?> "Higher than level 6"
   many (char ' ' <|> char '\t') <?> "Pre-Text Whitespace"
-  content <- manyTill ((inlineElement <* log_ "element") <?> "Header Text") (try lineEnding <?> "Header Ending")
+  log_ "heading content start"
+  content <- manyTill (inlineElement <?> "Header Text") (log_ "attempt" *> try lineEnding <?> "Header Ending")
   pure $ Heading $ H level content
 
 -- Fenced Code Block
@@ -252,17 +258,18 @@ paragraphBlock = do
 -- Inline Elements
 inlineElement :: Parser InlineText
 inlineElement =
-  choice
-    [ try strong <?> "Inline Strong Text",
-      try emphasis <?> "Inline Italic Text",
-      try crossedText <?> "Inline Crossed Text",
-      try codeSpan <?> "Inline Code",
-      try image <?> "Inline Image",
-      try link <?> "Inline Link",
-      try htmlInline <?> "Inline HTML",
-      try escapedChar <?> "Escaped Character",
-      plainText <?> "Inline Plain Text"
-    ]
+  logP $
+    choice
+      [ try strong <?> "Inline Strong Text",
+        try emphasis <?> "Inline Italic Text",
+        try crossedText <?> "Inline Crossed Text",
+        try codeSpan <?> "Inline Code",
+        try image <?> "Inline Image",
+        try link <?> "Inline Link",
+        try htmlInline <?> "Inline HTML",
+        try escapedChar <?> "Escaped Character",
+        plainText <?> "Inline Plain Text"
+      ]
 
 -- Strong (Bold)
 strong :: Parser InlineText
