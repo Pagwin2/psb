@@ -35,7 +35,7 @@ executable psb
 
     -- Other library packages from which modules are imported.
     -- https://hackage.haskell.org/package/texmath
-    build-depends:    base >=4.17.2.1, mustache >=2.4.2,  shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text, time, unordered-containers, yaml, megaparsec >= 9.7.0
+    build-depends:    base >=4.17.2.1, mustache >=2.4.2,  shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2
     --parsec >= 3.1.18.0
 
     -- Directories containing source files.

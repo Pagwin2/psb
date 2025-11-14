@@ -7,16 +7,22 @@ module Markdown where
 
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
+import Control.Monad.Trans.Class (lift)
 import Data.Char (isAlpha)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import IR
-import Text.Megaparsec (Parsec, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
+import Text.Megaparsec (ParsecT, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
 
-type Parser = Parsec Void String
+type ParserT m = ParsecT Void String m
+
+type Parser = ParserT IO
+
+log_ :: String -> Parser ()
+log_ = lift . putStrLn
 
 anyChar :: Parser Char
 anyChar = anySingle
@@ -78,10 +84,11 @@ blankLine = do
 headingBlock :: Parser Element
 headingBlock = do
   hashes <- some (char '#') <?> "Heading Hashes"
+  log_ "heading"
   let level = length hashes
   guard (level <= 6) <?> "Higher than level 6"
   many (char ' ' <|> char '\t') <?> "Pre-Text Whitespace"
-  content <- manyTill (inlineElement <?> "Header Text") (try lineEnding <?> "Header Ending")
+  content <- manyTill ((inlineElement <* log_ "element") <?> "Header Text") (try lineEnding <?> "Header Ending")
   pure $ Heading $ H level content
 
 -- Fenced Code Block

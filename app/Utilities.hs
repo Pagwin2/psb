@@ -2,6 +2,7 @@ module Utilities where
 
 import Config
 import Control.Monad (filterM)
+import Control.Monad.IO.Class (liftIO)
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -15,7 +16,7 @@ import Development.Shake.FilePath ((<.>), (</>))
 import qualified Development.Shake.FilePath as FP
 import HTML
 import Markdown
-import Text.Megaparsec (parse)
+import Text.Megaparsec (errorBundlePretty, runParserT)
 import Types
 
 indexHtmlOutputPath :: FilePath -> FilePath
@@ -37,9 +38,10 @@ indexHtmlMarkdownSourcePath =
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
   content <- Shake.readFile' filePath
-  let (metadataText, document) = case parse (liftA2 (,) Markdown.metadata Markdown.document) filePath content of
+  parse <- liftIO $ runParserT (liftA2 (,) Markdown.metadata Markdown.document) filePath content
+  let (metadataText, document) = case parse of
         Right (a, b) -> (a, b)
-        Left e -> error $ show e
+        Left e -> error $ errorBundlePretty e
 
   let metadata = case decodeEither' $ encodeUtf8 metadataText of
         Right m -> m
@@ -52,10 +54,10 @@ now = Shake.liftIO $ fmap (T.pack . iso8601Show) getCurrentTime
 markdownToPost :: FilePath -> Action Post
 markdownToPost path = do
   content <- Shake.readFile' path
-  -- TODO: error handling
-  let postData = case parse Markdown.metadata path content of
+  parse <- liftIO $ runParserT Markdown.metadata path content
+  let postData = case parse of
         Right p -> p
-        Left e -> error $ show e
+        Left e -> error $ errorBundlePretty e
   let post = case decodeEither' $ encodeUtf8 postData of
         Right p -> p
         Left e -> error $ show e
