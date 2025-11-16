@@ -258,8 +258,8 @@ paragraphBlock = do
 -- Inline Elements
 inlineElement :: Parser InlineText
 inlineElement =
-  logP $
-    choice
+  log_ "inline element call"
+    *> choice
       [ try strong <?> "Inline Strong Text",
         try emphasis <?> "Inline Italic Text",
         try crossedText <?> "Inline Crossed Text",
@@ -328,7 +328,9 @@ inlineElementNo c =
 
 plainTextNo :: [Char] -> Parser InlineText
 plainTextNo disallow = do
+  log_ "a"
   firstChar <- noneOf disallow <?> "Plain Text Initial Disallow"
+  log_ "b"
   remChars <- manyTill (plainTextCharNo disallow) lineEnding <?> "Remaining Characters"
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
   where
