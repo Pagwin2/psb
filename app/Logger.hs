@@ -27,7 +27,7 @@ instance Logger IO where
   logDebug = logIO
 
 logState :: (Monad m) => T.Text -> StateT T.Text m ()
-logState msg = modify (\log -> log <> msg <> "\n")
+logState msg = modify (<> msg <> "\n")
 
 instance (Monad m) => Logger (StateT T.Text m) where
   logError = logState
@@ -36,7 +36,7 @@ instance (Monad m) => Logger (StateT T.Text m) where
   logDebug = logState
 
 logStateStr :: (Monad m) => T.Text -> StateT String m ()
-logStateStr msg = modify (\log -> log <> T.unpack msg <> "\n")
+logStateStr msg = modify (<> T.unpack msg <> "\n")
 
 instance (Monad m) => Logger (StateT String m) where
   logError = logStateStr
