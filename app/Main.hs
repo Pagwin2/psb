@@ -29,7 +29,7 @@ import Utilities
 
 main :: IO ()
 main = do
-  Shake.shakeArgs Shake.shakeOptions $ do
+  Shake.shakeArgs Shake.shakeOptions {Shake.shakeProgress = Shake.progressSimple} $ do
     Shake.withTargetDocs "Build the site" $
       "build" ~> buildSite
     Shake.withTargetDocs "Clean the built site" $

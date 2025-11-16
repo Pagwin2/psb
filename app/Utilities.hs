@@ -2,7 +2,7 @@ module Utilities where
 
 import Config
 import Control.Monad (filterM)
-import Control.Monad.IO.Class (liftIO)
+import Data.Functor.Identity (Identity (runIdentity))
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -38,7 +38,7 @@ indexHtmlMarkdownSourcePath =
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
   content <- Shake.readFile' filePath
-  parse <- liftIO $ runParserT (liftA2 (,) Markdown.metadata Markdown.document) filePath content
+  let parse = runIdentity $ runParserT (liftA2 (,) Markdown.metadata Markdown.document) filePath content
   let (metadataText, document) = case parse of
         Right (a, b) -> (a, b)
         Left e -> error $ errorBundlePretty e
@@ -54,7 +54,7 @@ now = Shake.liftIO $ fmap (T.pack . iso8601Show) getCurrentTime
 markdownToPost :: FilePath -> Action Post
 markdownToPost path = do
   content <- Shake.readFile' path
-  parse <- liftIO $ runParserT Markdown.metadata path content
+  let parse = runIdentity $ runParserT Markdown.metadata path content
   let postData = case parse of
         Right p -> p
         Left e -> error $ errorBundlePretty e

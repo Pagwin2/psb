@@ -7,27 +7,28 @@ module Markdown where
 
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
-import Control.Monad.Trans.Class (lift)
 import Data.Char (isAlpha)
+import Data.Functor.Identity (Identity)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import IR
+import Logger (Logger (logDebug))
 import Text.Megaparsec (ParsecT, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
 
 type ParserT m = ParsecT Void String m
 
-type Parser = ParserT IO
+type Parser = ParserT Identity
 
-log_ :: String -> Parser ()
-log_ = lift . putStrLn
+log_ :: T.Text -> Parser ()
+log_ = logDebug
 
 logP :: (Show s) => Parser s -> Parser s
 logP v = do
   underlying <- v
-  log_ $ show underlying
+  logDebug $ T.show underlying
   v
 
 anyChar :: Parser Char
@@ -331,7 +332,7 @@ plainTextNo disallow = do
   log_ "a"
   firstChar <- noneOf disallow <?> "Plain Text Initial Disallow"
   log_ "b"
-  remChars <- manyTill (plainTextCharNo disallow) lineEnding <?> "Remaining Characters"
+  remChars <- many $ notFollowedBy lineEnding *> plainTextCharNo disallow
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
   where
     wspHandler '\n' = ' '
