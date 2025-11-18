@@ -29,7 +29,7 @@ instance Logger IO where
 logState :: (Monad m) => T.Text -> StateT T.Text m ()
 logState msg = modify (<> msg <> "\n")
 
-instance (Monad m) => Logger (StateT T.Text m) where
+instance {-# OVERLAPPING #-} (Monad m) => Logger (StateT T.Text m) where
   logError = logState
   logWarning = logState
   logInfo = logState
@@ -38,19 +38,19 @@ instance (Monad m) => Logger (StateT T.Text m) where
 logStateStr :: (Monad m) => T.Text -> StateT String m ()
 logStateStr msg = modify (<> T.unpack msg <> "\n")
 
-instance (Monad m) => Logger (StateT String m) where
+instance {-# OVERLAPPING #-} (Monad m) => Logger (StateT String m) where
   logError = logStateStr
   logWarning = logStateStr
   logInfo = logStateStr
   logDebug = logStateStr
 
-instance (Monad m) => Logger (WriterT T.Text m) where
+instance {-# OVERLAPPING #-} (Monad m) => Logger (WriterT T.Text m) where
   logError = tell . (<> "\n")
   logWarning = tell . (<> "\n")
   logInfo = tell . (<> "\n")
   logDebug = tell . (<> "\n")
 
-instance (Monad m) => Logger (WriterT String m) where
+instance {-# OVERLAPPING #-} (Monad m) => Logger (WriterT String m) where
   logError = tell . T.unpack . (<> "\n")
   logWarning = tell . T.unpack . (<> "\n")
   logInfo = tell . T.unpack . (<> "\n")
@@ -69,7 +69,7 @@ instance Logger Identity where
   logDebug = const $ pure ()
 
 -- this isn't strictly correct but it's only used for ParsecT so it is practically correct
-instance (MonadTrans mt, Logger m) => Logger (mt m) where
+instance {-# OVERLAPPABLE #-} (MonadTrans mt, Logger m) => Logger (mt m) where
   logError = lift . logError
   logWarning = lift . logWarning
   logInfo = lift . logInfo
