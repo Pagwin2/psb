@@ -22,45 +22,42 @@ type ParserT m = ParsecT Void String m
 
 type Parser = ParserT Identity
 
-log_ :: T.Text -> Parser ()
-log_ = logDebug
-
-logP :: (Show s) => Parser s -> Parser s
+logP :: (Logger m, Show s) => ParserT m s -> ParserT m s
 logP v = do
   underlying <- v
   logDebug $ T.show underlying
   v
 
-anyChar :: Parser Char
+anyChar :: ParserT m Char
 anyChar = anySingle
 
-alphaNum :: Parser Char
+alphaNum :: ParserT m Char
 alphaNum = alphaNumChar
 
-digit :: Parser Char
+digit :: ParserT m Char
 digit = digitChar
 
-noneOf :: [Char] -> Parser Char
+noneOf :: [Char] -> ParserT m Char
 noneOf = MP.noneOf
 
-oneOf :: [Char] -> Parser Char
+oneOf :: [Char] -> ParserT m Char
 oneOf = MP.oneOf
 
-optionMaybe :: Parser a -> Parser (Maybe a)
+optionMaybe :: ParserT m a -> ParserT m (Maybe a)
 optionMaybe = optional
 
-skipMany1 :: Parser a -> Parser ()
+skipMany1 :: ParserT m a -> ParserT m ()
 skipMany1 = skipSome
 
-metadata :: Parser Text
+metadata :: ParserT m Text
 metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (string "--")) <|> anySingleBut '-') <* bound
   where
     bound = string "---"
 
-document :: Parser Document
+document :: (Logger m) => ParserT m Document
 document = Doc <$> many element <* eof
 
-element :: Parser Element
+element :: (Logger m) => ParserT m Element
 element =
   choice
     [ try headingBlock <?> "Element Heading",
@@ -76,30 +73,29 @@ element =
     ]
 
 -- Blank lines (consumed but not stored)
-blankLines :: Parser Element
+blankLines :: (Logger m) => ParserT m Element
 blankLines = do
   skipMany1 (blankLine *> notFollowedBy eof)
   element <|> fmap (const $ HTML HTMLTag {html_content = ""}) eof -- Parse the next element (or handle eof)
 
-blankLine :: Parser ()
+blankLine :: (Logger m) => ParserT m ()
 blankLine = do
   many (char ' ' <|> char '\t')
   lineEnding
   pure ()
 
 -- Heading Block
-headingBlock :: Parser Element
+headingBlock :: (Logger m) => ParserT m Element
 headingBlock = do
   hashes <- some (char '#') <?> "Heading Hashes"
   let level = length hashes
   guard (level <= 6) <?> "Higher than level 6"
   many (char ' ' <|> char '\t') <?> "Pre-Text Whitespace"
-  log_ "heading content start"
-  content <- manyTill (inlineElement <?> "Header Text") (log_ "attempt" *> try lineEnding <?> "Header Ending")
+  content <- manyTill (inlineElement <?> "Header Text") (try lineEnding <?> "Header Ending")
   pure $ Heading $ H level content
 
 -- Fenced Code Block
-fencedCodeBlock :: Parser Element
+fencedCodeBlock :: (Logger m) => ParserT m Element
 fencedCodeBlock = do
   fence <- string "```" <|> string "~~~"
   lang <- optionMaybe languageInfo
@@ -107,17 +103,17 @@ fencedCodeBlock = do
   codeLines <- manyTill codeLine (try $ string fence)
   pure $ Code $ C lang (T.pack $ unlines codeLines)
 
-languageInfo :: Parser Text
+languageInfo :: (Logger m) => ParserT m Text
 languageInfo = T.pack <$> some (alphaNum <|> char '-' <|> char '+' <|> char '.')
 
-codeLine :: Parser String
+codeLine :: (Logger m) => ParserT m String
 codeLine = do
   line <- many $ noneOf "\n\r"
   lineEnding
   pure line
 
 -- Indented Code Block
-indentedCodeBlock :: Parser Element
+indentedCodeBlock :: (Logger m) => ParserT m Element
 indentedCodeBlock = do
   lines' <- some indentedLine
   pure $ Code $ C Nothing (T.pack $ unlines lines')
@@ -129,7 +125,7 @@ indentedCodeBlock = do
       pure line
 
 -- Blockquote Block
-blockquoteBlock :: Parser Element
+blockquoteBlock :: (Logger m) => ParserT m Element
 blockquoteBlock = do
   lines' <- some blockquoteLine
   pure $ BlockQuote $ Q (concat lines')
@@ -141,7 +137,7 @@ blockquoteBlock = do
       pure content
 
 -- Horizontal Rule Block
-horizontalRuleBlock :: Parser Element
+horizontalRuleBlock :: (Logger m) => ParserT m Element
 horizontalRuleBlock = do
   choice
     [ try (count 3 (char '*') >> many (char ' ' <|> char '*')),
@@ -152,12 +148,12 @@ horizontalRuleBlock = do
   pure HorizontalRule
 
 -- Unordered List Block
-unorderedListBlock :: Parser Element
+unorderedListBlock :: (Logger m) => ParserT m Element
 unorderedListBlock = do
   items <- some unorderedListItem
   pure $ List $ L Unordered items
 
-unorderedListItem :: Parser ListItem
+unorderedListItem :: (Logger m) => ParserT m ListItem
 unorderedListItem = do
   oneOf "*-+"
   char ' ' <|> char '\t'
@@ -166,7 +162,7 @@ unorderedListItem = do
   children <- many (try indentedList)
   pure $ LI content children
 
-listContinuation :: Parser [InlineText]
+listContinuation :: (Logger m) => ParserT m [InlineText]
 listContinuation = do
   count 2 (char ' ' <|> char '\t')
   many (char ' ' <|> char '\t')
@@ -176,35 +172,35 @@ listContinuation = do
   pure content
 
 -- TODO: handle list indentation at all levels
-indentedList :: Parser List
+indentedList :: (Logger m) => ParserT m List
 indentedList = do
   let n = 1
   void $ count (4 * n) (char ' ') <|> count n (char '\t')
   choice [try indentedUnorderedList, indentedOrderedList]
 
-indentedUnorderedList :: Parser List
+indentedUnorderedList :: (Logger m) => ParserT m List
 indentedUnorderedList = do
   items <- some (try $ indentedListItem (oneOf "*-+" >> void (char ' ' <|> char '\t')))
   pure $ L Unordered items
 
-indentedOrderedList :: Parser List
+indentedOrderedList :: (Logger m) => ParserT m List
 indentedOrderedList = do
   items <- some (try $ indentedListItem (some digit >> char '.' >> void (char ' ' <|> char '\t')))
   pure $ L Ordered items
 
-indentedListItem :: Parser () -> Parser ListItem
+indentedListItem :: (Logger m) => ParserT m () -> ParserT m ListItem
 indentedListItem marker = do
   marker
   content <- manyTill inlineElement (try $ lineEnding <|> eof)
   pure $ LI content []
 
 -- Ordered List Block
-orderedListBlock :: Parser Element
+orderedListBlock :: (Logger m) => ParserT m Element
 orderedListBlock = do
   items <- some orderedListItem
   pure $ List $ L Ordered items
 
-orderedListItem :: Parser ListItem
+orderedListItem :: (Logger m) => ParserT m ListItem
 orderedListItem = do
   some digit
   char '.'
@@ -215,7 +211,7 @@ orderedListItem = do
   pure $ LI (content ++ concat continuations) children
 
 -- HTML Block
-htmlBlock :: Parser Element
+htmlBlock :: (Logger m) => ParserT m Element
 htmlBlock = do
   char '<'
   -- Capture the entire HTML block as raw text
@@ -223,25 +219,25 @@ htmlBlock = do
   let content = '<' : rest
   return $ HTML $ HTMLTag (T.pack content)
 
-tagName :: Parser String
+tagName :: (Logger m) => ParserT m String
 tagName = do
   first <- satisfy isAlpha
   rest <- many (alphaNum <|> char '-' <|> char ':')
   pure (first : rest)
 
-attribute :: Parser (Text, Maybe Text)
+attribute :: (Logger m) => ParserT m (Text, Maybe Text)
 attribute = do
   name <- attributeName
   value <- optionMaybe (char '=' >> attributeValue)
   pure (T.pack name, fmap T.pack value)
 
-attributeName :: Parser String
+attributeName :: (Logger m) => ParserT m String
 attributeName = do
   first <- satisfy isAlpha
   rest <- many (alphaNum <|> char '-' <|> char ':')
   pure (first : rest)
 
-attributeValue :: Parser String
+attributeValue :: (Logger m) => ParserT m String
 attributeValue =
   choice
     [ between (char '"') (char '"') (many $ anySingleBut '"'),
@@ -250,47 +246,46 @@ attributeValue =
     ]
 
 -- Paragraph Block
-paragraphBlock :: Parser Element
+paragraphBlock :: (Logger m) => ParserT m Element
 paragraphBlock = do
   content <- some inlineElement
   lineEnding <|> eof
   pure $ Paragraph $ P content
 
 -- Inline Elements
-inlineElement :: Parser InlineText
+inlineElement :: (Logger m) => ParserT m InlineText
 inlineElement =
-  log_ "inline element call"
-    *> choice
-      [ try strong <?> "Inline Strong Text",
-        try emphasis <?> "Inline Italic Text",
-        try crossedText <?> "Inline Crossed Text",
-        try codeSpan <?> "Inline Code",
-        try image <?> "Inline Image",
-        try link <?> "Inline Link",
-        try htmlInline <?> "Inline HTML",
-        try escapedChar <?> "Escaped Character",
-        plainText <?> "Inline Plain Text"
-      ]
+  choice
+    [ try strong <?> "Inline Strong Text",
+      try emphasis <?> "Inline Italic Text",
+      try crossedText <?> "Inline Crossed Text",
+      try codeSpan <?> "Inline Code",
+      try image <?> "Inline Image",
+      try link <?> "Inline Link",
+      try htmlInline <?> "Inline HTML",
+      try escapedChar <?> "Escaped Character",
+      plainText <?> "Inline Plain Text"
+    ]
 
 -- Strong (Bold)
-strong :: Parser InlineText
+strong :: (Logger m) => ParserT m InlineText
 strong = strongAsterisk <|> strongUnderscore
 
-strongAsterisk :: Parser InlineText
+strongAsterisk :: (Logger m) => ParserT m InlineText
 strongAsterisk = do
   string "**"
   content <- some (notFollowedBy (string "**") >> inlineElement)
   string "**"
   pure $ Bold content
 
-strongUnderscore :: Parser InlineText
+strongUnderscore :: (Logger m) => ParserT m InlineText
 strongUnderscore = do
   string "__"
   content <- some (notFollowedBy (string "__") >> inlineElement)
   string "__"
   pure $ Bold content
 
-crossedText :: Parser InlineText
+crossedText :: (Logger m) => ParserT m InlineText
 crossedText = do
   string "~~"
   content <- some (notFollowedBy (string "~~") >> inlineElement)
@@ -298,24 +293,24 @@ crossedText = do
   pure $ Crossed content
 
 -- Emphasis (Italic)
-emphasis :: Parser InlineText
+emphasis :: (Logger m) => ParserT m InlineText
 emphasis = emphasisAsterisk <|> emphasisUnderscore
 
-emphasisAsterisk :: Parser InlineText
+emphasisAsterisk :: (Logger m) => ParserT m InlineText
 emphasisAsterisk = do
   char '*'
   content <- some (notFollowedBy (char '*') >> inlineElementNoAsterisk)
   char '*'
   pure $ Italic content
 
-emphasisUnderscore :: Parser InlineText
+emphasisUnderscore :: (Logger m) => ParserT m InlineText
 emphasisUnderscore = do
   char '_'
   content <- some inlineElementNoUnderscore
   char '_'
   pure $ Italic content
 
-inlineElementNo :: Char -> Parser InlineText
+inlineElementNo :: (Logger m) => Char -> ParserT m InlineText
 inlineElementNo c =
   choice
     [ try strong,
@@ -327,25 +322,26 @@ inlineElementNo c =
       plainTextNo [c]
     ]
 
-plainTextNo :: [Char] -> Parser InlineText
-plainTextNo disallow = do
-  log_ "a"
-  firstChar <- noneOf disallow <?> "Plain Text Initial Disallow"
-  log_ "b"
+plainTextNo :: (Logger m) => [Char] -> ParserT m InlineText
+plainTextNo = plainTextNo' False
+
+plainTextNo' :: (Logger m) => Bool -> [Char] -> ParserT m InlineText
+plainTextNo' block_whitespace disallow = do
+  firstChar <- noneOf (disallow <> if block_whitespace then " \t\r\n" else []) <?> "Plain Text Initial Disallow"
   remChars <- many $ notFollowedBy lineEnding *> plainTextCharNo disallow
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
   where
     wspHandler '\n' = ' '
     wspHandler c = c
 
-inlineElementNoAsterisk :: Parser InlineText
+inlineElementNoAsterisk :: (Logger m) => ParserT m InlineText
 inlineElementNoAsterisk = inlineElementNo '*'
 
-inlineElementNoUnderscore :: Parser InlineText
+inlineElementNoUnderscore :: (Logger m) => ParserT m InlineText
 inlineElementNoUnderscore = inlineElementNo '_'
 
 -- Code Span
-codeSpan :: Parser InlineText
+codeSpan :: (Logger m) => ParserT m InlineText
 codeSpan =
   choice
     [ try tripleBacktick,
@@ -368,7 +364,7 @@ codeSpan =
       pure $ InlineCode (T.pack content)
 
 -- Image
-image :: Parser InlineText
+image :: (Logger m) => ParserT m InlineText
 image = do
   char '!'
   char '['
@@ -378,7 +374,7 @@ image = do
   return $ Image {altText = alt, url = url, title = title}
 
 -- Link
-link :: Parser InlineText
+link :: (Logger m) => ParserT m InlineText
 link = do
   char '['
   content <- some (notFollowedBy (char ']') >> inlineElementNoBracket)
@@ -386,7 +382,7 @@ link = do
   (url, title) <- linkDestination
   pure $ Link content url title
 
-inlineElementNoBracket :: Parser InlineText
+inlineElementNoBracket :: (Logger m) => ParserT m InlineText
 inlineElementNoBracket =
   choice
     [ try strong,
@@ -397,7 +393,7 @@ inlineElementNoBracket =
       plainTextNoBracket
     ]
 
-linkDestination :: Parser (Text, Maybe Text)
+linkDestination :: (Logger m) => ParserT m (Text, Maybe Text)
 linkDestination = directLink <|> referenceLink
   where
     directLink = do
@@ -414,7 +410,7 @@ linkDestination = directLink <|> referenceLink
       -- In a real implementation, you'd look up the reference
       pure (T.pack $ "[" ++ ref ++ "]", Nothing)
 
-titleParser :: Parser Text
+titleParser :: (Logger m) => ParserT m Text
 titleParser =
   T.pack
     <$> choice
@@ -424,41 +420,41 @@ titleParser =
       ]
 
 -- HTML Inline
-htmlInline :: Parser InlineText
+htmlInline :: (Logger m) => ParserT m InlineText
 htmlInline = do
   start <- char '<'
   content <- manyTill anyChar (try $ char '>')
   return $ HTMLInline (T.pack (start : content ++ ">"))
 
 -- Escaped Character
-escapedChar :: Parser InlineText
+escapedChar :: (Logger m) => ParserT m InlineText
 escapedChar = do
   char '\\'
   c <- satisfy (\x -> x >= '!' && x <= '~')
   pure $ Text (T.singleton c)
 
 -- Plain Text
-plainText :: Parser InlineText
-plainText = plainTextNo [] <?> "Baseline Plain Text"
+plainText :: (Logger m) => ParserT m InlineText
+plainText = plainTextNo' True [] <?> "Baseline Plain Text"
 
 plainTextBaseDisallow :: [Char]
 plainTextBaseDisallow = "[~`_*<"
 
-plainTextCharNo :: [Char] -> Parser Char
+plainTextCharNo :: (Logger m) => [Char] -> ParserT m Char
 plainTextCharNo additional = noneOf $ additional <> plainTextBaseDisallow
 
-plainTextNoAsterisk :: Parser InlineText
+plainTextNoAsterisk :: (Logger m) => ParserT m InlineText
 plainTextNoAsterisk = plainTextNo "*"
 
-plainTextNoUnderscore :: Parser InlineText
+plainTextNoUnderscore :: (Logger m) => ParserT m InlineText
 plainTextNoUnderscore = plainTextNo "_"
 
-plainTextNoBracket :: Parser InlineText
+plainTextNoBracket :: (Logger m) => ParserT m InlineText
 plainTextNoBracket = plainTextNo "[]"
 
 -- Helper Parsers
-lineEnding :: Parser ()
+lineEnding :: (Logger m) => ParserT m ()
 lineEnding = void (try $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")) <|> eof
 
-wsParser :: Parser ()
+wsParser :: (Logger m) => ParserT m ()
 wsParser = void $ some (char ' ' <|> char '\t')
