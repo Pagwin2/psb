@@ -17,16 +17,14 @@ import Logger (Logger (logDebug))
 import Text.Megaparsec (ParsecT, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
+import Utilities (tee)
 
 type ParserT m = ParsecT Void String m
 
 type Parser = ParserT Identity
 
 logP :: (Logger m, Show s) => ParserT m s -> ParserT m s
-logP v = do
-  underlying <- v
-  logDebug $ T.show underlying
-  v
+logP = tee (logDebug . T.show)
 
 anyChar :: ParserT m Char
 anyChar = anySingle

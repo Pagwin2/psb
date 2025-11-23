@@ -29,7 +29,7 @@ executable psb
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
 
-    other-modules: Config Utilities Templates Types IR Markdown Restruct HTML Logger
+    other-modules: Config Utilities Utilities.FilePath Utilities.Action Templates Types IR Markdown Restruct HTML Logger
 
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
 

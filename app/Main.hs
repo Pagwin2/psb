@@ -21,7 +21,8 @@ import Development.Shake.FilePath ((</>))
 import qualified Development.Shake.FilePath as FP
 import Templates
 import Types
-import Utilities
+import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now)
+import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
 
 -- target = thing we want
 -- Rule = pattern of thing being made + actions to produce the thing
@@ -47,7 +48,7 @@ buildSite = do
   Shake.need $ map indexHtmlOutputPath pagePaths
 
   -- handle posts
-  postPaths <- getPublishedPosts
+  postPaths <- getPublishedPosts isDraft
   Shake.need $ map indexHtmlOutputPath postPaths
 
   -- remaining pages, index.xml = rss feed
@@ -95,7 +96,7 @@ markdownPost src = do
   let rPost = fromPost post
   postHtml <- applyTemplate "post.html" rPost
 
-  time <- Utilities.now
+  time <- Utilities.Action.now
   -- Shake.putInfo $ T.unpack $ urlConvert target
   let page =
         Page
@@ -111,13 +112,13 @@ markdownPost src = do
 home :: Rules ()
 home =
   outputDir </> "index.html" %> \target -> do
-    postPaths <- getPublishedPosts
+    postPaths <- getPublishedPosts isDraft
     posts <-
       sortOn (Ord.Down . postDate)
         <$> forM postPaths readPost
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
-    time <- Utilities.now
+    time <- Utilities.Action.now
     -- Shake.putInfo $ T.unpack $ urlConvert target
     let page =
           Page
@@ -140,9 +141,9 @@ data Rss = Rss
 rss :: Rules ()
 rss =
   outputDir </> "index.xml" %> \target -> do
-    postPaths <- getPublishedPosts
+    postPaths <- getPublishedPosts isDraft
     posts <- map fromPost . sortOn (Ord.Down . postDate) <$> forM postPaths readPost
-    time <- Utilities.now
+    time <- Utilities.Action.now
     applyTemplateAndWrite "feed.xml" (Rss time posts) target
 
 -- Shake.putInfo $ "Built " <> target
@@ -161,3 +162,9 @@ readMarkdownPost postPath = do
       { postContent = Just html,
         postLink = Just . T.pack $ "/" <> FP.dropExtension postPath <> "/"
       }
+
+postHandles :: [(FilePath -> Bool, FilePath -> Action Post)]
+postHandles = [(isMarkdownPost, markdownToPost)]
+
+isDraft :: FilePath -> Action Bool
+isDraft = isDraft' postHandles
