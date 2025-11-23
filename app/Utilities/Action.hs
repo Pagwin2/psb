@@ -20,7 +20,7 @@ import Types
 markdownToHtml :: (FromJSON a) => FilePath -> Action (a, Text)
 markdownToHtml filePath = do
   content <- Shake.readFile' filePath
-  let parse = runIdentity $ runParserT (liftA2 (,) Markdown.metadata Markdown.document) filePath content
+  let parse = runIdentity $ runParserT (liftA2 (,) Markdown.metadata Markdown.document) filePath $ T.pack content
   let (metadataText, document) = case parse of
         Right (a, b) -> (a, b)
         Left e -> error $ errorBundlePretty e
@@ -33,7 +33,7 @@ markdownToHtml filePath = do
 markdownToPost :: FilePath -> Action Post
 markdownToPost path = do
   content <- Shake.readFile' path
-  let parse = runIdentity $ runParserT Markdown.metadata path content
+  let parse = runIdentity $ runParserT Markdown.metadata path $ T.pack content
   let postData = case parse of
         Right p -> p
         Left e -> error $ errorBundlePretty e

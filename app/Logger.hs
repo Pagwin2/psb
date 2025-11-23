@@ -8,8 +8,6 @@ import Control.Monad.Trans.Writer (WriterT, tell)
 import Data.Functor.Identity (Identity)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Development.Shake (Action)
-import qualified Development.Shake as Shake
 
 class (Monad m) => Logger m where
   logError :: T.Text -> m ()
@@ -55,12 +53,6 @@ instance {-# OVERLAPPING #-} (Monad m) => Logger (WriterT String m) where
   logWarning = tell . T.unpack . (<> "\n")
   logInfo = tell . T.unpack . (<> "\n")
   logDebug = tell . T.unpack . (<> "\n")
-
-instance Logger Action where
-  logError = Shake.putError . T.unpack
-  logWarning = Shake.putWarn . T.unpack
-  logInfo = Shake.putInfo . T.unpack
-  logDebug = Shake.putLoud . T.unpack
 
 instance Logger Identity where
   logError = const $ pure ()

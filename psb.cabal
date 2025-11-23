@@ -22,6 +22,15 @@ build-type:         Simple
 common warnings
     ghc-options: -Wall
 
+test-suite test-markdown-parse
+    hs-source-dirs: app
+    type: exitcode-stdio-1.0
+    main-is: Tests/Markdown/Parse.hs
+    build-depends: base >=4.17.2.1, text >= 2.1.2, megaparsec >= 9.7.0, transformers >= 0.6.2, hedgehog >= 1.7, time
+    
+    default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
+    other-modules: IR Logger Markdown Utilities
+
 executable psb
     -- Import common warning flags.
     import:           warnings
@@ -29,13 +38,13 @@ executable psb
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
 
-    other-modules: Config Utilities Utilities.FilePath Utilities.Action Templates Types IR Markdown Restruct HTML Logger
+    other-modules: Config Utilities Utilities.FilePath Utilities.Action Templates Types IR Markdown Restruct HTML Logger Logger.Shake
 
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
 
     -- Other library packages from which modules are imported.
     -- https://hackage.haskell.org/package/texmath
-    build-depends:    base >=4.17.2.1, mustache >=2.4.2,  shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2
+    build-depends:    base >=4.17.2.1, mustache >=2.4.2, shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2
     --parsec >= 3.1.18.0
 
     -- Directories containing source files.
