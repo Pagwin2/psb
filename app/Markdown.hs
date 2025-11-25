@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 
 -- (document, metadata)
 module Markdown (document, metadata) where
@@ -9,12 +10,14 @@ import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
 import Data.Char (isAlpha)
 import Data.Functor.Identity (Identity)
+import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
+import GHC.Stack (HasCallStack, callStack, prettyCallStack)
 import IR
 import Logger (Logger (logDebug))
-import Text.Megaparsec (ParsecT, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
+import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
 import Utilities (tee)
@@ -25,39 +28,41 @@ type ParserT m = ParserTG T.Text m
 
 type Parser = ParserT Identity
 
-logP :: (Logger m, Show s) => ParserTG s m s -> ParserTG s m s
+logP :: (Logger m, Show v, Token s ~ Char, Stream s) => ParserTG s m v -> ParserTG s m v
 logP = tee (logDebug . T.show)
 
-anyChar :: ParserTG s m Char
+anyChar :: (Token s ~ Char, Stream s) => ParserTG s m Char
 anyChar = anySingle
 
-alphaNum :: ParserTG s m Char
+alphaNum :: (Token s ~ Char, Stream s) => ParserTG s m Char
 alphaNum = alphaNumChar
 
-digit :: ParserTG s m Char
+digit :: (Token s ~ Char, Stream s) => ParserTG s m Char
 digit = digitChar
 
-noneOf :: [Char] -> ParserTG s m Char
+noneOf :: (Token s ~ Char, Stream s) => [Char] -> ParserTG s m Char
 noneOf = MP.noneOf
 
-oneOf :: [Char] -> ParserTG s m Char
+oneOf :: (Token s ~ Char, Stream s) => [Char] -> ParserTG s m Char
 oneOf = MP.oneOf
 
-optionMaybe :: ParserTG s m a -> ParserTG s m (Maybe a)
+optionMaybe :: (Token s ~ Char, Stream s) => ParserTG s m a -> ParserTG s m (Maybe a)
 optionMaybe = optional
 
-skipMany1 :: ParserTG s m a -> ParserTG s m ()
+skipMany1 :: (Token s ~ Char, Stream s) => ParserTG s m a -> ParserTG s m ()
 skipMany1 = skipSome
 
-metadata :: ParserTG s m Text
+metadata :: (Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Text
 metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (string "--")) <|> anySingleBut '-') <* bound
   where
     bound = string "---"
 
-document :: (Logger m) => ParserTG s m Document
-document = Doc <$> many element <* eof
+document :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Document
+document = do
+  logDebug "document"
+  Doc <$> many element <* eof
 
-element :: (Logger m) => ParserTG s m Element
+element :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 element =
   choice
     [ try headingBlock <?> "Element Heading",
@@ -73,19 +78,19 @@ element =
     ]
 
 -- Blank lines (consumed but not stored)
-blankLines :: (Logger m) => ParserTG s m Element
+blankLines :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 blankLines = do
   skipMany1 (blankLine *> notFollowedBy eof)
   element <|> fmap (const $ HTML HTMLTag {html_content = ""}) eof -- Parse the next element (or handle eof)
 
-blankLine :: (Logger m) => ParserTG s m ()
+blankLine :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ()
 blankLine = do
   many (char ' ' <|> char '\t')
   lineEnding
   pure ()
 
 -- Heading Block
-headingBlock :: (Logger m) => ParserTG s m Element
+headingBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 headingBlock = do
   hashes <- some (char '#') <?> "Heading Hashes"
   let level = length hashes
@@ -95,25 +100,30 @@ headingBlock = do
   pure $ Heading $ H level content
 
 -- Fenced Code Block
-fencedCodeBlock :: (Logger m) => ParserTG s m Element
+fencedCodeBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 fencedCodeBlock = do
+  logDebug "fenced_coding_block"
   fence <- string "```" <|> string "~~~"
+  logDebug "fence"
   lang <- optionMaybe languageInfo
-  lineEnding
+  logDebug "langInfo"
+  lineEnding'
+  logDebug "lineEnding"
   codeLines <- manyTill codeLine (try $ string fence)
+  logDebug "lines"
   pure $ Code $ C lang (T.pack $ unlines codeLines)
 
-languageInfo :: (Logger m) => ParserTG s m Text
+languageInfo :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Text
 languageInfo = T.pack <$> some (alphaNum <|> char '-' <|> char '+' <|> char '.')
 
-codeLine :: (Logger m) => ParserTG s m String
+codeLine :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m String
 codeLine = do
   line <- many $ noneOf "\n\r"
-  lineEnding
+  lineEnding'
   pure line
 
 -- Indented Code Block
-indentedCodeBlock :: (Logger m) => ParserTG s m Element
+indentedCodeBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 indentedCodeBlock = do
   lines' <- some indentedLine
   pure $ Code $ C Nothing (T.pack $ unlines lines')
@@ -125,7 +135,7 @@ indentedCodeBlock = do
       pure line
 
 -- Blockquote Block
-blockquoteBlock :: (Logger m) => ParserTG s m Element
+blockquoteBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 blockquoteBlock = do
   lines' <- some blockquoteLine
   pure $ BlockQuote $ Q (concat lines')
@@ -137,7 +147,7 @@ blockquoteBlock = do
       pure content
 
 -- Horizontal Rule Block
-horizontalRuleBlock :: (Logger m) => ParserTG s m Element
+horizontalRuleBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 horizontalRuleBlock = do
   choice
     [ try (count 3 (char '*') >> many (char ' ' <|> char '*')),
@@ -148,21 +158,21 @@ horizontalRuleBlock = do
   pure HorizontalRule
 
 -- Unordered List Block
-unorderedListBlock :: (Logger m) => ParserTG s m Element
+unorderedListBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 unorderedListBlock = do
   items <- some unorderedListItem
   pure $ List $ L Unordered items
 
-unorderedListItem :: (Logger m) => ParserTG s m ListItem
+unorderedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ListItem
 unorderedListItem = do
   oneOf "*-+"
   char ' ' <|> char '\t'
-  content <- manyTill inlineElement (try lineEnding)
+  content <- manyTill inlineElement (try lineEnding')
   -- continuations <- many listContinuation
   children <- many (try indentedList)
   pure $ LI content children
 
-listContinuation :: (Logger m) => ParserTG s m [InlineText]
+listContinuation :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m [InlineText]
 listContinuation = do
   count 2 (char ' ' <|> char '\t')
   many (char ' ' <|> char '\t')
@@ -172,35 +182,35 @@ listContinuation = do
   pure content
 
 -- TODO: handle list indentation at all levels
-indentedList :: (Logger m) => ParserTG s m List
+indentedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedList = do
   let n = 1
   void $ count (4 * n) (char ' ') <|> count n (char '\t')
   choice [try indentedUnorderedList, indentedOrderedList]
 
-indentedUnorderedList :: (Logger m) => ParserTG s m List
+indentedUnorderedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedUnorderedList = do
   items <- some (try $ indentedListItem (oneOf "*-+" >> void (char ' ' <|> char '\t')))
   pure $ L Unordered items
 
-indentedOrderedList :: (Logger m) => ParserTG s m List
+indentedOrderedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedOrderedList = do
   items <- some (try $ indentedListItem (some digit >> char '.' >> void (char ' ' <|> char '\t')))
   pure $ L Ordered items
 
-indentedListItem :: (Logger m) => ParserTG s m () -> ParserTG s m ListItem
+indentedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m () -> ParserTG s m ListItem
 indentedListItem marker = do
   marker
   content <- manyTill inlineElement (try $ lineEnding <|> eof)
   pure $ LI content []
 
 -- Ordered List Block
-orderedListBlock :: (Logger m) => ParserTG s m Element
+orderedListBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 orderedListBlock = do
   items <- some orderedListItem
   pure $ List $ L Ordered items
 
-orderedListItem :: (Logger m) => ParserTG s m ListItem
+orderedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ListItem
 orderedListItem = do
   some digit
   char '.'
@@ -211,33 +221,33 @@ orderedListItem = do
   pure $ LI (content ++ concat continuations) children
 
 -- HTML Block
-htmlBlock :: (Logger m) => ParserTG s m Element
+htmlBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 htmlBlock = do
   char '<'
   -- Capture the entire HTML block as raw text
   rest <- manyTill anyChar (try $ char '>' >> lineEnding)
-  let content = '<' : rest
+  let content = '<' : (rest <> ">")
   return $ HTML $ HTMLTag (T.pack content)
 
-tagName :: (Logger m) => ParserTG s m String
+tagName :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
 tagName = do
   first <- satisfy isAlpha
   rest <- many (alphaNum <|> char '-' <|> char ':')
   pure (first : rest)
 
-attribute :: (Logger m) => ParserTG s m (Text, Maybe Text)
+attribute :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m (Text, Maybe Text)
 attribute = do
   name <- attributeName
   value <- optionMaybe (char '=' >> attributeValue)
   pure (T.pack name, fmap T.pack value)
 
-attributeName :: (Logger m) => ParserTG s m String
+attributeName :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
 attributeName = do
   first <- satisfy isAlpha
   rest <- many (alphaNum <|> char '-' <|> char ':')
   pure (first : rest)
 
-attributeValue :: (Logger m) => ParserTG s m String
+attributeValue :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
 attributeValue =
   choice
     [ between (char '"') (char '"') (many $ anySingleBut '"'),
@@ -246,46 +256,48 @@ attributeValue =
     ]
 
 -- Paragraph Block
-paragraphBlock :: (Logger m) => ParserTG s m Element
+paragraphBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 paragraphBlock = do
-  content <- some inlineElement
+  logDebug "paragraph"
+  content <- some (notFollowedBy lineEnding *> inlineElement)
   lineEnding <|> eof
   pure $ Paragraph $ P content
 
 -- Inline Elements
-inlineElement :: (Logger m) => ParserTG s m InlineText
+inlineElement :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 inlineElement =
-  choice
-    [ try strong <?> "Inline Strong Text",
-      try emphasis <?> "Inline Italic Text",
-      try crossedText <?> "Inline Crossed Text",
-      try codeSpan <?> "Inline Code",
-      try image <?> "Inline Image",
-      try link <?> "Inline Link",
-      try htmlInline <?> "Inline HTML",
-      try escapedChar <?> "Escaped Character",
-      plainText <?> "Inline Plain Text"
-    ]
+  logDebug "inlineElement"
+    *> choice
+      [ try strong <?> "Inline Strong Text",
+        try emphasis <?> "Inline Italic Text",
+        try crossedText <?> "Inline Crossed Text",
+        try codeSpan <?> "Inline Code",
+        try image <?> "Inline Image",
+        try link <?> "Inline Link",
+        try htmlInline <?> "Inline HTML",
+        try escapedChar <?> "Escaped Character",
+        plainText <?> "Inline Plain Text"
+      ]
 
 -- Strong (Bold)
-strong :: (Logger m) => ParserTG s m InlineText
+strong :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 strong = strongAsterisk <|> strongUnderscore
 
-strongAsterisk :: (Logger m) => ParserTG s m InlineText
+strongAsterisk :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 strongAsterisk = do
   string "**"
   content <- some (notFollowedBy (string "**") >> inlineElement)
   string "**"
   pure $ Bold content
 
-strongUnderscore :: (Logger m) => ParserTG s m InlineText
+strongUnderscore :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 strongUnderscore = do
   string "__"
   content <- some (notFollowedBy (string "__") >> inlineElement)
   string "__"
   pure $ Bold content
 
-crossedText :: (Logger m) => ParserTG s m InlineText
+crossedText :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 crossedText = do
   string "~~"
   content <- some (notFollowedBy (string "~~") >> inlineElement)
@@ -293,24 +305,24 @@ crossedText = do
   pure $ Crossed content
 
 -- Emphasis (Italic)
-emphasis :: (Logger m) => ParserTG s m InlineText
+emphasis :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 emphasis = emphasisAsterisk <|> emphasisUnderscore
 
-emphasisAsterisk :: (Logger m) => ParserTG s m InlineText
+emphasisAsterisk :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 emphasisAsterisk = do
   char '*'
   content <- some (notFollowedBy (char '*') >> inlineElementNoAsterisk)
   char '*'
   pure $ Italic content
 
-emphasisUnderscore :: (Logger m) => ParserTG s m InlineText
+emphasisUnderscore :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 emphasisUnderscore = do
   char '_'
   content <- some inlineElementNoUnderscore
   char '_'
   pure $ Italic content
 
-inlineElementNo :: (Logger m) => Char -> ParserTG s m InlineText
+inlineElementNo :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => Char -> ParserTG s m InlineText
 inlineElementNo c =
   choice
     [ try strong,
@@ -322,11 +334,13 @@ inlineElementNo c =
       plainTextNo [c]
     ]
 
-plainTextNo :: (Logger m) => [Char] -> ParserTG s m InlineText
-plainTextNo = plainTextNo' False
+plainTextNo :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => [Char] -> ParserTG s m InlineText
+plainTextNo list = do
+  plainTextNo' False list
 
-plainTextNo' :: (Logger m) => Bool -> [Char] -> ParserTG s m InlineText
+plainTextNo' :: (HasCallStack, Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => Bool -> [Char] -> ParserTG s m InlineText
 plainTextNo' block_whitespace disallow = do
+  logDebug $ "base plain Text: " <> T.show block_whitespace <> " " <> T.show disallow
   firstChar <- noneOf (disallow <> if block_whitespace then " \t\r\n" else []) <?> "Plain Text Initial Disallow"
   remChars <- many $ notFollowedBy lineEnding *> plainTextCharNo disallow
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
@@ -334,14 +348,14 @@ plainTextNo' block_whitespace disallow = do
     wspHandler '\n' = ' '
     wspHandler c = c
 
-inlineElementNoAsterisk :: (Logger m) => ParserTG s m InlineText
+inlineElementNoAsterisk :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 inlineElementNoAsterisk = inlineElementNo '*'
 
-inlineElementNoUnderscore :: (Logger m) => ParserTG s m InlineText
+inlineElementNoUnderscore :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 inlineElementNoUnderscore = inlineElementNo '_'
 
 -- Code Span
-codeSpan :: (Logger m) => ParserTG s m InlineText
+codeSpan :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 codeSpan =
   choice
     [ try tripleBacktick,
@@ -364,7 +378,7 @@ codeSpan =
       pure $ InlineCode (T.pack content)
 
 -- Image
-image :: (Logger m) => ParserTG s m InlineText
+image :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m InlineText
 image = do
   char '!'
   char '['
@@ -374,7 +388,7 @@ image = do
   return $ Image {altText = alt, url = url, title = title}
 
 -- Link
-link :: (Logger m) => ParserTG s m InlineText
+link :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 link = do
   char '['
   content <- some (notFollowedBy (char ']') >> inlineElementNoBracket)
@@ -382,7 +396,7 @@ link = do
   (url, title) <- linkDestination
   pure $ Link content url title
 
-inlineElementNoBracket :: (Logger m) => ParserTG s m InlineText
+inlineElementNoBracket :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 inlineElementNoBracket =
   choice
     [ try strong,
@@ -393,7 +407,7 @@ inlineElementNoBracket =
       plainTextNoBracket
     ]
 
-linkDestination :: (Logger m) => ParserTG s m (Text, Maybe Text)
+linkDestination :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m (Text, Maybe Text)
 linkDestination = directLink <|> referenceLink
   where
     directLink = do
@@ -410,7 +424,7 @@ linkDestination = directLink <|> referenceLink
       -- In a real implementation, you'd look up the reference
       pure (T.pack $ "[" ++ ref ++ "]", Nothing)
 
-titleParser :: (Logger m) => ParserTG s m Text
+titleParser :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m Text
 titleParser =
   T.pack
     <$> choice
@@ -420,41 +434,44 @@ titleParser =
       ]
 
 -- HTML Inline
-htmlInline :: (Logger m) => ParserTG s m InlineText
+htmlInline :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m InlineText
 htmlInline = do
   start <- char '<'
   content <- manyTill anyChar (try $ char '>')
   return $ HTMLInline (T.pack (start : content ++ ">"))
 
 -- Escaped Character
-escapedChar :: (Logger m) => ParserTG s m InlineText
+escapedChar :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m InlineText
 escapedChar = do
   char '\\'
   c <- satisfy (\x -> x >= '!' && x <= '~')
   pure $ Text (T.singleton c)
 
 -- Plain Text
-plainText :: (Logger m) => ParserTG s m InlineText
-plainText = plainTextNo' True [] <?> "Baseline Plain Text"
+plainText :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
+plainText = plainTextNo' False [] <?> "Baseline Plain Text"
 
 plainTextBaseDisallow :: [Char]
 plainTextBaseDisallow = "[~`_*<"
 
-plainTextCharNo :: (Logger m) => [Char] -> ParserTG s m Char
+plainTextCharNo :: (Logger m, Token s ~ Char, Stream s) => [Char] -> ParserTG s m Char
 plainTextCharNo additional = noneOf $ additional <> plainTextBaseDisallow
 
-plainTextNoAsterisk :: (Logger m) => ParserTG s m InlineText
+plainTextNoAsterisk :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 plainTextNoAsterisk = plainTextNo "*"
 
-plainTextNoUnderscore :: (Logger m) => ParserTG s m InlineText
+plainTextNoUnderscore :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 plainTextNoUnderscore = plainTextNo "_"
 
-plainTextNoBracket :: (Logger m) => ParserTG s m InlineText
+plainTextNoBracket :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
 plainTextNoBracket = plainTextNo "[]"
 
 -- Helper Parsers
-lineEnding :: (Logger m) => ParserTG s m ()
+lineEnding :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ()
 lineEnding = void (try $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")) <|> eof
 
-wsParser :: (Logger m) => ParserTG s m ()
+lineEnding' :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ()
+lineEnding' = void (try (string "\r\n") <|> try (string "\n") <|> string "\r") <|> eof
+
+wsParser :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m ()
 wsParser = void $ some (char ' ' <|> char '\t')

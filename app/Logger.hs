@@ -15,14 +15,14 @@ class (Monad m) => Logger m where
   logInfo :: T.Text -> m ()
   logDebug :: T.Text -> m ()
 
-logIO :: T.Text -> IO ()
-logIO = T.putStrLn
+logIO :: T.Text -> T.Text -> IO ()
+logIO kind msg = T.putStrLn $ kind <> ": " <> msg
 
 instance Logger IO where
-  logError = logIO
-  logWarning = logIO
-  logInfo = logIO
-  logDebug = logIO
+  logError = logIO "error"
+  logWarning = logIO "warning"
+  logInfo = logIO "info"
+  logDebug = logIO "debug"
 
 logState :: (Monad m) => T.Text -> StateT T.Text m ()
 logState msg = modify (<> msg <> "\n")
