@@ -8,28 +8,22 @@ module Markdown (document, metadata) where
 
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
-import Data.Char (isAlpha)
 import Data.Functor.Identity (Identity)
 import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
-import GHC.Stack (HasCallStack, callStack, prettyCallStack)
 import IR
 import Logger (Logger (logDebug))
 import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, string)
-import Utilities (tee)
 
 type ParserTG = ParsecT Void
 
 type ParserT m = ParserTG T.Text m
 
 type Parser = ParserT Identity
-
-logP :: (Logger m, Show v, Token s ~ Char, Stream s) => ParserTG s m v -> ParserTG s m v
-logP = tee (logDebug . T.show)
 
 anyChar :: (Token s ~ Char, Stream s) => ParserTG s m Char
 anyChar = anySingle
@@ -175,15 +169,6 @@ unorderedListItem = do
   children <- many (try indentedList)
   pure $ LI content children
 
-listContinuation :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m [InlineText]
-listContinuation = do
-  count 2 (char ' ' <|> char '\t')
-  many (char ' ' <|> char '\t')
-  notFollowedBy (oneOf "*-+")
-  notFollowedBy (digit >> char '.')
-  content <- manyTill inlineElement (try lineEnding)
-  pure content
-
 -- TODO: handle list indentation at all levels
 indentedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedList = do
@@ -232,32 +217,6 @@ htmlBlock = do
   rest <- manyTill anyChar (try $ char '>' >> lineEnding)
   let content = '<' : (rest <> ">")
   return $ HTML $ HTMLTag (T.pack content)
-
-tagName :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
-tagName = do
-  first <- satisfy isAlpha
-  rest <- many (alphaNum <|> char '-' <|> char ':')
-  pure (first : rest)
-
-attribute :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m (Text, Maybe Text)
-attribute = do
-  name <- attributeName
-  value <- optionMaybe (char '=' >> attributeValue)
-  pure (T.pack name, fmap T.pack value)
-
-attributeName :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
-attributeName = do
-  first <- satisfy isAlpha
-  rest <- many (alphaNum <|> char '-' <|> char ':')
-  pure (first : rest)
-
-attributeValue :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m String
-attributeValue =
-  choice
-    [ between (char '"') (char '"') (many $ anySingleBut '"'),
-      between (char '\'') (char '\'') (many $ anySingleBut '\''),
-      some $ noneOf " \t\n\r>\"'=<`"
-    ]
 
 -- Paragraph Block
 paragraphBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
@@ -342,7 +301,7 @@ plainTextNo :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => [Cha
 plainTextNo list = do
   plainTextNo' False list
 
-plainTextNo' :: (HasCallStack, Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => Bool -> [Char] -> ParserTG s m InlineText
+plainTextNo' :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => Bool -> [Char] -> ParserTG s m InlineText
 plainTextNo' block_whitespace disallow = do
   logDebug $ "base plain Text: " <> T.show block_whitespace <> " " <> T.show disallow
   firstChar <- noneOf (disallow <> if block_whitespace then " \t\r\n" else []) <?> "Plain Text Initial Disallow"
@@ -408,7 +367,7 @@ inlineElementNoBracket =
       try codeSpan,
       try htmlInline,
       try escapedChar,
-      plainTextNoBracket
+      plainTextNo "[]"
     ]
 
 linkDestination :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m (Text, Maybe Text)
@@ -461,21 +420,9 @@ plainTextBaseDisallow = "[~`_*<"
 plainTextCharNo :: (Logger m, Token s ~ Char, Stream s) => [Char] -> ParserTG s m Char
 plainTextCharNo additional = noneOf $ additional <> plainTextBaseDisallow
 
-plainTextNoAsterisk :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
-plainTextNoAsterisk = plainTextNo "*"
-
-plainTextNoUnderscore :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
-plainTextNoUnderscore = plainTextNo "_"
-
-plainTextNoBracket :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m InlineText
-plainTextNoBracket = plainTextNo "[]"
-
 -- Helper Parsers
 lineEnding :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ()
 lineEnding = void (try $ count 2 (try (string "\r\n") <|> try (string "\n") <|> string "\r")) <|> eof
 
 lineEnding' :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ()
 lineEnding' = void (try (string "\r\n") <|> try (string "\n") <|> string "\r") <|> eof
-
-wsParser :: (Logger m, Token s ~ Char, Stream s) => ParserTG s m ()
-wsParser = void $ some (char ' ' <|> char '\t')
