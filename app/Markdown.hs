@@ -162,13 +162,15 @@ horizontalRuleBlock = do
 unorderedListBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 unorderedListBlock = do
   items <- some unorderedListItem
+  lineEnding'
   pure $ List $ L Unordered items
 
 unorderedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ListItem
 unorderedListItem = do
   oneOf "*-+"
   char ' ' <|> char '\t'
-  content <- manyTill inlineElement (try lineEnding')
+  content <- many $ notFollowedBy lineEnding' *> inlineElement
+  lineEnding'
   -- continuations <- many listContinuation
   children <- many (try indentedList)
   pure $ LI content children
@@ -202,24 +204,25 @@ indentedOrderedList = do
 indentedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m () -> ParserTG s m ListItem
 indentedListItem marker = do
   marker
-  content <- manyTill inlineElement (try $ lineEnding <|> eof)
+  content <- many $ notFollowedBy lineEnding' *> inlineElement
   pure $ LI content []
 
 -- Ordered List Block
 orderedListBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
 orderedListBlock = do
   items <- some orderedListItem
+  lineEnding'
   pure $ List $ L Ordered items
 
 orderedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ListItem
 orderedListItem = do
   some digit
-  char '.'
-  char ' ' <|> char '\t'
-  content <- manyTill inlineElement (try lineEnding)
-  continuations <- many listContinuation
+  char '.' <|> char ')'
+  optional (char ' ' <|> char '\t')
+  content <- many $ notFollowedBy lineEnding' *> inlineElement
+  -- continuations <- many listContinuation
   children <- many (try indentedList)
-  pure $ LI (content ++ concat continuations) children
+  pure $ LI content children
 
 -- HTML Block
 htmlBlock :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Element
@@ -343,7 +346,7 @@ plainTextNo' :: (HasCallStack, Logger m, Token s ~ Char, Stream s, IsString (Tok
 plainTextNo' block_whitespace disallow = do
   logDebug $ "base plain Text: " <> T.show block_whitespace <> " " <> T.show disallow
   firstChar <- noneOf (disallow <> if block_whitespace then " \t\r\n" else []) <?> "Plain Text Initial Disallow"
-  remChars <- many $ notFollowedBy lineEnding *> plainTextCharNo disallow
+  remChars <- many $ notFollowedBy lineEnding' *> plainTextCharNo disallow
   pure $ Text $ T.map wspHandler $ T.pack $ firstChar : remChars
   where
     wspHandler '\n' = ' '
