@@ -109,16 +109,17 @@ fencedCodeBlock = do
   logDebug "langInfo"
   lineEnding'
   logDebug "lineEnding"
-  codeLines <- manyTill codeLine (try $ string fence)
+  codeLines <- manyTill (codeLine fence) (try $ string fence)
   logDebug "lines"
   pure $ Code $ C lang (T.pack $ unlines codeLines)
 
 languageInfo :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m Text
 languageInfo = T.pack <$> some (alphaNum <|> char '-' <|> char '+' <|> char '.')
 
-codeLine :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m String
-codeLine = do
-  line <- many $ noneOf "\n\r"
+codeLine :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => (Tokens s) -> ParserTG s m String
+codeLine fence = do
+  -- this is a hack which can only haunt me if I continue using markdown
+  line <- many $ (notFollowedBy $ string fence) *> noneOf "\n\r"
   lineEnding'
   pure line
 
@@ -143,7 +144,7 @@ blockquoteBlock = do
     blockquoteLine = do
       char '>'
       optional (char ' ')
-      content <- manyTill inlineElement (try lineEnding)
+      content <- many $ notFollowedBy lineEnding' *> inlineElement
       pure content
 
 -- Horizontal Rule Block
