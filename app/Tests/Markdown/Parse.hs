@@ -36,7 +36,10 @@ main = do
           ("code_block_hanging", code_block_hanging),
           ("two_blockquotes", two_blockquotes),
           ("unordered_list", unordered_list),
-          ("header_after_unordered_list", header_after_unordered_list)
+          ("header_after_unordered_list", header_after_unordered_list),
+          ("ordered_list", ordered_list),
+          ("multiple_ordered_lists", multiple_ordered_lists)
+          -- ("",),
         ]
   if cond
     then exitSuccess
@@ -180,6 +183,44 @@ header_after_unordered_list = property $ do
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e
 
--- From weekly notes, doing a header after a unordered list causes it to be seens as an inline element
---
+ordered_list :: Property
+ordered_list = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alpha
+  item_1 <- text_gen
+  item_2 <- text_gen
+  item_3 <- text_gen
+  let input = "1. " <> item_1 <> "\n2. " <> item_2 <> "\n3. " <> item_3
+
+  parsed <- generic_parse input
+
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    (Just (Right (Doc [List (L {list_type = Ordered, items = [LI {content = [Text item_1], children = []}, LI {content = [Text item_2], children = []}, LI {content = [Text item_3], children = []}]})]))) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
+multiple_ordered_lists :: Property
+multiple_ordered_lists = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alpha
+  item_1 <- text_gen
+  item_2 <- text_gen
+  item_3 <- text_gen
+  let input = "1. " <> item_1 <> "\n\n2. " <> item_2 <> "\n\n3. " <> item_3
+
+  parsed <- generic_parse input
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    ( Just
+        ( Right
+            ( Doc
+                [ List (L {list_type = Ordered, items = [LI {content = [Text item_1], children = []}]}),
+                  List (L {list_type = Ordered, items = [LI {content = [Text item_2], children = []}]}),
+                  List (L {list_type = Ordered, items = [LI {content = [Text item_3], children = []}]})
+                  ]
+              )
+          )
+      ) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
 -- From all-projects, not sure if it's block or what causing HTML escapes to go haywire
