@@ -205,6 +205,7 @@ orderedListItem = do
   char '.' <|> char ')'
   optional (char ' ' <|> char '\t')
   content <- many $ notFollowedBy lineEnding' *> inlineElement
+  lineEnding'
   -- continuations <- many listContinuation
   children <- many (try indentedList)
   pure $ LI content children
