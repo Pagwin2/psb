@@ -29,7 +29,7 @@ test-suite test-markdown-parse
     hs-source-dirs: app
     type: exitcode-stdio-1.0
     main-is: Tests/Markdown/Parse.hs
-    build-depends: base >=4.20 && < 4.21, text >= 2.1.2 && < 2.2, megaparsec >= 9.7.0 && < 9.8, transformers >= 0.6.2 && < 0.7, hedgehog >= 1.7 && < 1.8, time >= 1.15 && < 1.16
+    build-depends: base >=4.20 && < 4.21, text >= 2.1.2 , megaparsec >= 9.7.0 , transformers >= 0.6.2 , hedgehog >= 1.7 , time
     
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
     other-modules: IR Logger Markdown Utilities
