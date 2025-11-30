@@ -38,7 +38,9 @@ main = do
           ("unordered_list", unordered_list),
           ("header_after_unordered_list", header_after_unordered_list),
           ("ordered_list", ordered_list),
-          ("multiple_ordered_lists", multiple_ordered_lists)
+          ("multiple_ordered_lists", multiple_ordered_lists),
+          ("header_then_ordered_list", header_then_ordered_list),
+          ("nested_unordered_list", nested_unordered_list)
           -- ("",),
         ]
   if cond
@@ -223,4 +225,66 @@ multiple_ordered_lists = property $ do
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e
 
--- From all-projects, not sure if it's block or what causing HTML escapes to go haywire
+-- - a
+--      - a
+-- - b
+nested_unordered_list :: Property
+nested_unordered_list = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alpha
+  item_1 <- text_gen
+  item_2 <- text_gen
+  item_3 <- text_gen
+  let input = "- " <> item_1 <> "\n\n    -" <> item_2 <> "\n\n- " <> item_3
+
+  parsed <- generic_parse input
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    ( Just
+        ( Right
+            ( Doc
+                [ List (L {list_type = Unordered, items = [LI {content = [Text item_1], children = [L {list_type = Unordered, items = [LI {content = [Text item_2]}]}]}, LI {content = [Text item_3], children = []}]})
+                  ]
+              )
+          )
+      ) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
+-- ##
+-- 1)
+-- 2)
+-- 3)
+header_then_ordered_list :: Property
+header_then_ordered_list = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alpha
+  header <- text_gen
+  header_level <- forAll $ Gen.int (Range.linear 1 6)
+  item_1 <- text_gen
+  item_2 <- text_gen
+  item_3 <- text_gen
+  let input = (T.pack $ take header_level $ repeat '#') <> header <> "1) " <> item_1 <> "\n2) " <> item_2 <> "\n3) " <> item_3
+
+  parsed <- generic_parse input
+
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    ( Just
+        ( Right
+            ( Doc
+                [ Heading (H {level = header_level, text = header}),
+                  List
+                    ( L
+                        { list_type = Ordered,
+                          items =
+                            [ LI {content = [Text item_1], children = []},
+                              LI {content = [Text item_2], children = []},
+                              LI {content = [Text item_3], children = []}
+                              ]
+                        }
+                      )
+                  ]
+              )
+          )
+      ) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
