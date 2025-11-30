@@ -173,7 +173,7 @@ unorderedListItem = do
 indentedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedList = do
   let n = 1
-  void $ count (4 * n) (char ' ') <|> count n (char '\t')
+  void $ (count (4 * n) (char ' ')) <|> count n (char '\t')
   choice [try indentedUnorderedList, indentedOrderedList]
 
 indentedUnorderedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List

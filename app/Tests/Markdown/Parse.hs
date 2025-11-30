@@ -234,7 +234,7 @@ nested_unordered_list = property $ do
   item_1 <- text_gen
   item_2 <- text_gen
   item_3 <- text_gen
-  let input = "- " <> item_1 <> "\n\n    -" <> item_2 <> "\n\n- " <> item_3
+  let input = "- " <> item_1 <> "\n    -" <> item_2 <> "\n- " <> item_3
 
   parsed <- generic_parse input
   case parsed of
@@ -262,7 +262,7 @@ header_then_ordered_list = property $ do
   item_1 <- text_gen
   item_2 <- text_gen
   item_3 <- text_gen
-  let input = (T.pack $ take header_level $ repeat '#') <> header <> "1) " <> item_1 <> "\n2) " <> item_2 <> "\n3) " <> item_3
+  let input = (T.pack $ take header_level $ repeat '#') <> header <> "\n\n1) " <> item_1 <> "\n2) " <> item_2 <> "\n3) " <> item_3
 
   parsed <- generic_parse input
 
