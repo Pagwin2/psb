@@ -1,13 +1,8 @@
-- [ ] add rst support and convert markdown handling to custom parser instead of pandoc
-  - [ ] Get megaparsec pretty error message in bin build (errorBundlePretty)
-
+- [ ] add rst or org support and convert markdown handling to custom parser instead of pandoc
 - [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
-
 - [ ] minify js and css when copying over instead of just copying
-
 - [ ] setup fingerprinting in file names for css and js
-
 - [ ] dev server setup (with live reloading)
-
+    - https://hackage-content.haskell.org/package/warp-3.4.10/docs/Network-Wai-Handler-Warp.html
 -  [ ] see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
