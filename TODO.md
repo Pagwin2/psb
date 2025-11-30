@@ -4,5 +4,6 @@
 - [ ] minify js and css when copying over instead of just copying
 - [ ] setup fingerprinting in file names for css and js
 - [ ] dev server setup (with live reloading)
-    - https://hackage-content.haskell.org/package/warp-3.4.10/docs/Network-Wai-Handler-Warp.html
+    - https://hackage-content.haskell.org/package/warp-3.4.10
+    - https://hackage.haskell.org/package/file-embed
 -  [ ] see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
