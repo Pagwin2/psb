@@ -25,14 +25,20 @@ description: A Static site generator I've built for my purposes
 common warnings
     ghc-options: -Wall
 
+library
+    hs-source-dirs: src
+    exposed-modules: Markdown HTML Logger IR Logger.Shake
+    build-depends: base >=4.20 && < 4.21, text >= 2.1.2 , megaparsec >= 9.7.0 , transformers >= 0.6.2, shake >= 0.19.8,
+    default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
+
 test-suite test-markdown-parse
     hs-source-dirs: app
     type: exitcode-stdio-1.0
     main-is: Tests/Markdown/Parse.hs
-    build-depends: base >=4.20 && < 4.21, text >= 2.1.2 , megaparsec >= 9.7.0 , transformers >= 0.6.2 , hedgehog >= 1.7 , time
+    build-depends: base >=4.20 && < 4.21, text >= 2.1.2 , megaparsec >= 9.7.0 , transformers >= 0.6.2 , hedgehog >= 1.7 , time, psb
     
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
-    other-modules: IR Logger Markdown Utilities
+    other-modules: Utilities
     default-language: Haskell2010
 
 executable psb
@@ -42,13 +48,13 @@ executable psb
     -- .hs or .lhs file containing the Main module.
     main-is:          Main.hs
 
-    other-modules: Config Utilities Utilities.FilePath Utilities.Action Templates Types IR Markdown Restruct HTML Logger Logger.Shake
+    other-modules: Config Utilities Utilities.FilePath Utilities.Action Templates Types
 
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
 
     -- Other library packages from which modules are imported.
     -- https://hackage.haskell.org/package/texmath
-    build-depends:    base >=4.20 && < 4.21, mustache >=2.4.2, shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2
+    build-depends:    base >=4.20 && < 4.21, mustache >=2.4.2, shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2, psb
     --parsec >= 3.1.18.0
 
     -- Directories containing source files.
