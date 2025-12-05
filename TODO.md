@@ -6,4 +6,5 @@
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
     - https://hackage.haskell.org/package/file-embed
+    - https://hackage.haskell.org/package/fsnotify
 -  [ ] see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)

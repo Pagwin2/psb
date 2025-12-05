@@ -28,9 +28,10 @@ import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdown
 -- Rule = pattern of thing being made + actions to produce the thing
 -- Action = actions to produce a thing
 
+-- note: live watch should be done outside of shake with the watcher then running shake which is rather annoying
 main :: IO ()
 main = do
-  Shake.shakeArgs Shake.shakeOptions {Shake.shakeProgress = Shake.progressSimple} $ do
+  Shake.shakeArgs Shake.shakeOptions {Shake.shakeProgress = psbProgress} $ do
     Shake.withTargetDocs "Build the site" $
       "build" ~> buildSite
     Shake.withTargetDocs "Clean the built site" $
@@ -168,3 +169,6 @@ postHandles = [(isMarkdownPost, markdownToPost)]
 
 isDraft :: FilePath -> Action Bool
 isDraft = isDraft' postHandles
+
+psbProgress :: IO Shake.Progress -> IO ()
+psbProgress = Shake.progressDisplay 0.01 putStrLn
