@@ -1,3 +1,4 @@
+- [ ] Figure out what the fuck is going on with the soft engineering retrospective post or accept it's broken and rewrite the markdown parser later
 - [ ] add rst or org support and convert markdown handling to custom parser instead of pandoc
 - [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting

@@ -163,7 +163,7 @@ unorderedListBlock = do
 unorderedListItem :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m ListItem
 unorderedListItem = do
   oneOf "*-+"
-  char ' ' <|> char '\t'
+  optional (char ' ' <|> char '\t')
   content <- many $ notFollowedBy lineEnding' *> inlineElement
   lineEnding'
   -- continuations <- many listContinuation
