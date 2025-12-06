@@ -21,7 +21,7 @@ import Development.Shake.FilePath ((</>))
 import qualified Development.Shake.FilePath as FP
 import Templates
 import Types
-import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now)
+import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
 import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
 
 -- target = thing we want
@@ -31,12 +31,17 @@ import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdown
 -- note: live watch should be done outside of shake with the watcher then running shake which is rather annoying
 main :: IO ()
 main = do
-  Shake.shakeArgs Shake.shakeOptions {Shake.shakeProgress = psbProgress} $ do
-    Shake.withTargetDocs "Build the site" $
-      "build" ~> buildSite
-    Shake.withTargetDocs "Clean the built site" $
-      "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
-    Shake.withoutTargets buildRules
+  Shake.shakeArgs
+    Shake.shakeOptions
+      { Shake.shakeProgress = psbProgress,
+        Shake.shakeColor = True
+      }
+    $ do
+      Shake.withTargetDocs "Build the site" $
+        "build" ~> buildSite
+      Shake.withTargetDocs "Clean the built site" $
+        "clean" ~> Shake.removeFilesAfter outputDir ["//*"]
+      Shake.withoutTargets buildRules
 
 buildSite :: Action ()
 buildSite = do
@@ -169,6 +174,3 @@ postHandles = [(isMarkdownPost, markdownToPost)]
 
 isDraft :: FilePath -> Action Bool
 isDraft = isDraft' postHandles
-
-psbProgress :: IO Shake.Progress -> IO ()
-psbProgress = Shake.progressDisplay 0.01 putStrLn

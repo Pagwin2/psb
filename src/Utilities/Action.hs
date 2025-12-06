@@ -1,19 +1,25 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Utilities.Action where
 
 import Config (postGlobs)
 import Control.Monad (filterM)
 import Data.Functor.Identity (Identity (runIdentity))
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.List (find)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
+import qualified Data.Text.IO as TIO
 import Data.Time (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
 import Data.Yaml.Aeson
 import Development.Shake (Action)
 import qualified Development.Shake as Shake
+import GHC.IO (unsafePerformIO)
 import HTML
 import Markdown
+import System.IO (hFlush, hPutStr, stderr)
 import Text.Megaparsec (errorBundlePretty, runParserT)
 import Types
 
@@ -60,3 +66,14 @@ getPublishedPosts :: (FilePath -> Action Bool) -> Action [FilePath]
 getPublishedPosts draftCheck = do
   postPaths <- Shake.getDirectoryFiles "" postGlobs
   filterM (fmap not . draftCheck) postPaths
+
+psbProgress :: IO Shake.Progress -> IO ()
+psbProgress getProgress = do
+  Shake.progressDisplay 0.01 psbProgress' getProgress
+  where
+    psbProgress' msg = do
+      TIO.hPutStr stderr "\x1b[K\r"
+      hPutStr stderr msg
+      hFlush stderr
+      p <- getProgress
+      if (Shake.countTodo p + Shake.countUnknown p) < 5 then putStrLn "" else pure ()
