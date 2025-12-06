@@ -9,6 +9,7 @@ module Markdown (document, metadata) where
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
 import Data.Functor.Identity (Identity)
+import Data.Maybe (maybeToList)
 import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -166,19 +167,19 @@ unorderedListItem = do
   content <- many $ notFollowedBy lineEnding' *> inlineElement
   lineEnding'
   -- continuations <- many listContinuation
-  children <- many (try indentedList)
+  children <- maybeToList <$> (optional $ indentedList 1)
   pure $ LI content children
 
 -- TODO: handle list indentation at all levels
-indentedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
-indentedList = do
-  let n = 1
+indentedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => Int -> ParserTG s m List
+indentedList n = do
   void $ (count (4 * n) (char ' ')) <|> count n (char '\t')
-  choice [try indentedUnorderedList, indentedOrderedList]
+  ret <- (try indentedUnorderedList) <|> indentedOrderedList
+  pure ret <* lineEnding'
 
 indentedUnorderedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
 indentedUnorderedList = do
-  items <- some (try $ indentedListItem (oneOf "*-+" >> void (char ' ' <|> char '\t')))
+  items <- some (indentedListItem (oneOf "*-+" >> void (char ' ' <|> char '\t')))
   pure $ L Unordered items
 
 indentedOrderedList :: (Logger m, Token s ~ Char, Stream s, IsString (Tokens s)) => ParserTG s m List
@@ -207,7 +208,7 @@ orderedListItem = do
   content <- many $ notFollowedBy lineEnding' *> inlineElement
   lineEnding'
   -- continuations <- many listContinuation
-  children <- many (try indentedList)
+  children <- maybeToList <$> (optional $ indentedList 1)
   pure $ LI content children
 
 -- HTML Block

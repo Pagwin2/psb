@@ -234,7 +234,7 @@ nested_unordered_list = property $ do
   item_1 <- text_gen
   item_2 <- text_gen
   item_3 <- text_gen
-  let input = "- " <> item_1 <> "\n    -" <> item_2 <> "\n- " <> item_3
+  let input = "- " <> item_1 <> "\n    - " <> item_2 <> "\n- " <> item_3
 
   parsed <- generic_parse input
   case parsed of
@@ -242,7 +242,7 @@ nested_unordered_list = property $ do
     ( Just
         ( Right
             ( Doc
-                [ List (L {list_type = Unordered, items = [LI {content = [Text item_1], children = [L {list_type = Unordered, items = [LI {content = [Text item_2]}]}]}, LI {content = [Text item_3], children = []}]})
+                [ List (L {list_type = Unordered, items = [LI {content = [Text item_1], children = [L {list_type = Unordered, items = [LI {content = [Text item_2], children = []}]}]}, LI {content = [Text item_3], children = []}]})
                   ]
               )
           )
