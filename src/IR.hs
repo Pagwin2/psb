@@ -58,6 +58,7 @@ data InlineText
   | Bold [InlineText]
   | Italic [InlineText]
   | Crossed [InlineText]
+  | Underlined [InlineText]
   | InlineCode Text
   | Link
       { linkText :: [InlineText],
