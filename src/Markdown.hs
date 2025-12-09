@@ -52,8 +52,9 @@ element =
 lineEnding :: (Logger m, Characters s) => Parser s m ()
 lineEnding = (try eof) <|> void newline
 
+-- we don't need to parse eof, lineEnding does that, eof *> eof works just fine in place of eof
 blockEnding :: (Logger m, Characters s) => Parser s m ()
-blockEnding = (try (lineEnding *> lineEnding)) <|> eof
+blockEnding = lineEnding *> lineEnding
 
 -- TODO: check if inlineHTML needs to be handled in any markdown posts
 -- TODO: link impl
