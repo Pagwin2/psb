@@ -116,10 +116,21 @@ blockquoteBlock = BlockQuote . Q . concat <$> (some blockquoteLine)
       pure ret
 
 unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-unorderedListBlock indent_level = error "TODO: unorderedListBlock"
+unorderedListBlock indent_level = do
+  error "Can unordered and ordered lists be consolidated into 1 function of ListType -> Parser s m prefix -> Int -> Paser s m Element"
+  error "unhandled ident_level"
+  items <- some $ (try (unorderedListItem <* notFollowedBy blockEnding)) <|> (unorderedListItem <* lineEnding)
+  pure $ List $ L {list_type = Unordered, items}
+  where
+    unorderedListItem = error "unorderedListItem"
 
 orderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-orderedListBlock indent_level = error "TODO: orderedListBlock"
+orderedListBlock indent_level = do
+  error "unhandled ident_level"
+  items <- some $ (try (orderedListItem <* notFollowedBy blockEnding)) <|> (orderedListItem <* lineEnding)
+  pure $ List $ L {list_type = Unordered, items}
+  where
+    orderedListItem = error "orderedListItem"
 
 htmlBlock :: (Logger m, Characters s) => Parser s m Element
 htmlBlock = error "TODO: htmlBlock"
