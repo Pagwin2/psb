@@ -57,36 +57,46 @@ blockEnding :: (Logger m, Characters s) => Parser s m ()
 blockEnding = lineEnding *> lineEnding
 
 -- TODO: check if inlineHTML needs to be handled in any markdown posts
--- TODO: link impl
--- TODO: image impl
 inlineText :: (Logger m, Characters s) => Parser s m InlineText
-inlineText = choice [try strikethrough, try bold, try italic, try underlined, try code, try link, try image, plain_text]
+inlineText = inlineText' (fail "notFollowedBy noop")
   where
+    inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, plain_text disallow]
     between' start end middle_piece = between start end $ many ((notFollowedBy end) *> middle_piece)
 
-    strikethrough = Crossed <$> (between' (string "~~") (string "~~") inlineText)
+    strikethrough disallow = Crossed <$> (between' (string "~~") (string "~~") (inlineText' (disallow <|> (void $ string "~~"))))
 
-    bold = Bold <$> (between' (string "**") (string "**") inlineText)
+    bold disallow = Bold <$> (between' (string "**") (string "**") (inlineText' (disallow <|> (void $ string "**"))))
 
-    italic = Italic <$> (between' (char '*') (char '*') inlineText)
+    italic disallow = Italic <$> (between' (char '*') (char '*') (inlineText' (disallow <|> (void $ char '*'))))
 
-    underlined = Underlined <$> (between' (string "__") (string "__") inlineText)
+    underlined disallow = Underlined <$> (between' (string "__") (string "__") (inlineText' (disallow <|> (void $ string "__"))))
 
     code = InlineCode . T.pack <$> (between' (char '`') (char '`') (notFollowedBy lineEnding *> anySingle))
 
-    link = do
-      linkText <- error "linkText parser"
-      url <- error "url parser"
-      title <- error "title parser"
+    link disallow = do
+      linkText <- between' (char '[') (char ']') (inlineText' (disallow <|> (void $ char ']')))
+      (url, title) <- do
+        char '('
+        -- might fail on newline char situation
+        url <- T.pack <$> (many (notFollowedBy (char ')' <|> spaceChar) *> anySingle))
+        hasTitle <- optional spaceChar
+        title <- case hasTitle of
+          Just _ -> Just . T.pack <$> (many (notFollowedBy ((void $ char ')') <|> lineEnding) *> anySingle))
+          Nothing -> pure Nothing
+        char ')'
+        pure (url, title)
       pure Link {linkText, url, title}
 
-    image = do
-      altText <- error "altText"
-      url <- error "url"
-      title <- error "title"
+    image disallow = do
+      char '!'
+      -- Is this a hack? Yes. Bite me
+      link_hack <- link disallow
+      (altText, url, title) <- case link_hack of
+        Link {linkText = [Text altText], url, title} -> pure (altText, url, title)
+        _ -> fail "Image alt text must be normal text, cannot be stylized in any way"
       pure Image {altText, url, title}
 
-    plain_text = Text . T.pack <$> (many ((notFollowedBy blockEnding) *> anySingle))
+    plain_text disallow = Text . T.pack <$> (many ((notFollowedBy (blockEnding <|> disallow)) *> anySingle))
 
 headingBlock :: (Logger m, Characters s) => Parser s m Element
 headingBlock = do
