@@ -131,11 +131,11 @@ blockquoteBlock = BlockQuote . Q . concat <$> (some blockquoteLine)
 -- nesting amount
 listBlock :: (Logger m, Characters s) => ListType -> Parser s m prefix -> (Int -> Parser s m List) -> Int -> Parser s m Element
 listBlock list_type prefix child_parser_factory nest_level = do
-  error "unhandled ident_level"
   items <- some $ (try (listItem <* notFollowedBy blockEnding)) <|> (listItem <* lineEnding)
   pure $ List $ L {list_type, items}
   where
     listItem = do
+      count nest_level ((try $ void $ char '\t') <|> (void $ string "    "))
       prefix
       content <- many inlineText
       child <- optional $ child_parser_factory $ nest_level + 1
