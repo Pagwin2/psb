@@ -18,7 +18,7 @@ import IR
 import Logger (Logger (logDebug))
 import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
-import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, string)
+import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, spaceChar, string)
 
 type Parser = ParsecT Void
 
@@ -115,22 +115,31 @@ blockquoteBlock = BlockQuote . Q . concat <$> (some blockquoteLine)
       (optional ((notFollowedBy blockEnding) *> lineEnding))
       pure ret
 
-unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-unorderedListBlock indent_level = do
-  error "Can unordered and ordered lists be consolidated into 1 function of ListType -> Parser s m prefix -> Int -> Paser s m Element"
+-- type of list the parser returns
+-- parser which grabs the prefix for each item of the list
+-- parser used for child lists
+-- nesting amount
+listBlock :: (Logger m, Characters s) => ListType -> Parser s m prefix -> (Int -> Parser s m List) -> Int -> Parser s m Element
+listBlock list_type prefix child_parser_factory nest_level = do
   error "unhandled ident_level"
-  items <- some $ (try (unorderedListItem <* notFollowedBy blockEnding)) <|> (unorderedListItem <* lineEnding)
-  pure $ List $ L {list_type = Unordered, items}
+  items <- some $ (try (listItem <* notFollowedBy blockEnding)) <|> (listItem <* lineEnding)
+  pure $ List $ L {list_type, items}
   where
-    unorderedListItem = error "unorderedListItem"
+    listItem = error "listItem"
+
+unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
+unorderedListBlock = listBlock Unordered unordered_prefix (\level -> unwrap <$> unorderedListBlock level)
+  where
+    unordered_prefix = (choice $ map char "*-+") *> optional spaceChar
+    -- not exhaustive but we know listBlock is returning a List
+    unwrap (List l) = l
 
 orderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-orderedListBlock indent_level = do
-  error "unhandled ident_level"
-  items <- some $ (try (orderedListItem <* notFollowedBy blockEnding)) <|> (orderedListItem <* lineEnding)
-  pure $ List $ L {list_type = Unordered, items}
+orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> orderedListBlock level)
   where
-    orderedListItem = error "orderedListItem"
+    ordered_prefix = error "ordered_prefix"
+    -- not exhaustive but we know listBlock is returning a List
+    unwrap (List l) = l
 
 htmlBlock :: (Logger m, Characters s) => Parser s m Element
 htmlBlock = error "TODO: htmlBlock"
