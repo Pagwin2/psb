@@ -151,7 +151,8 @@ unorderedListBlock = listBlock Unordered unordered_prefix (\level -> unwrap <$> 
 orderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
 orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> ((try $ unorderedListBlock level) <|> orderedListBlock level))
   where
-    ordered_prefix = error "ordered_prefix"
+    -- regex equivalent: [0-9]+[.)]\s?
+    ordered_prefix = (some digitChar) *> (char '.' <|> char ')') *> optional spaceChar
     -- not exhaustive but we know listBlock is returning a List
     unwrap (List l) = l
 
