@@ -33,7 +33,7 @@ data BlockQuote = Q [InlineText] deriving (Show)
 
 data ListItem = LI
   { content :: [InlineText], -- Flatten continuations into here
-    children :: [List]
+    child :: Maybe List
   }
   deriving (Show)
 

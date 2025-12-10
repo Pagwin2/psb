@@ -125,17 +125,21 @@ listBlock list_type prefix child_parser_factory nest_level = do
   items <- some $ (try (listItem <* notFollowedBy blockEnding)) <|> (listItem <* lineEnding)
   pure $ List $ L {list_type, items}
   where
-    listItem = error "listItem"
+    listItem = do
+      prefix
+      content <- many inlineText
+      child <- optional $ child_parser_factory $ nest_level + 1
+      pure $ LI {content, child}
 
 unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-unorderedListBlock = listBlock Unordered unordered_prefix (\level -> unwrap <$> unorderedListBlock level)
+unorderedListBlock = listBlock Unordered unordered_prefix (\level -> unwrap <$> ((try $ unorderedListBlock level) <|> orderedListBlock level))
   where
     unordered_prefix = (choice $ map char "*-+") *> optional spaceChar
     -- not exhaustive but we know listBlock is returning a List
     unwrap (List l) = l
 
 orderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
-orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> orderedListBlock level)
+orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> ((try $ unorderedListBlock level) <|> orderedListBlock level))
   where
     ordered_prefix = error "ordered_prefix"
     -- not exhaustive but we know listBlock is returning a List

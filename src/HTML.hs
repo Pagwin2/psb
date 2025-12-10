@@ -64,7 +64,7 @@ generateLiElems (element : remainder) =
       -- We assume child lists are stricly after our contents
       -- if they aren't this is fucked
       serializeInlineToHTML element.content,
-      T.concat $ map (elementToHTML . List) element.children,
+      fromMaybe "" $ fmap (elementToHTML . List) element.child,
       "</li>",
       generateLiElems remainder
     ]
