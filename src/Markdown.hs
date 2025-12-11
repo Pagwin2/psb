@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
 -- (document, metadata)
@@ -9,27 +10,32 @@ module Markdown (document, metadata) where
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
 import Data.Functor.Identity (Identity)
-import Data.Maybe (maybeToList)
+import Data.Maybe (fromMaybe, maybeToList)
+import Data.Proxy (Proxy (Proxy))
 import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
 import IR
 import Logger (Logger (logDebug))
-import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
+import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, chunk, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
-import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, spaceChar, string)
+import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, spaceChar)
+import qualified Text.Megaparsec.Stream as MPS
 
 type Parser = ParsecT Void
 
-class (Token s ~ Char, Stream s, IsString (Tokens s), Show s) => Characters s
+class (Token s ~ Char, Stream s, IsString (Tokens s), Monoid (Tokens s), Eq (Tokens s), Show s) => Characters s
 
 instance Characters Text
 
 instance Characters String
 
+string :: (MP.MonadParsec e s m) => Tokens s -> m (Tokens s)
+string = chunk
+
 metadata :: (Logger m, Characters s) => Parser s m Text
-metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (string "--")) <|> anySingleBut '-') <* bound
+metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (chunk "--")) <|> anySingleBut '-') <* bound
   where
     bound = string "---"
 
@@ -156,8 +162,26 @@ orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> ((try 
     -- not exhaustive but we know listBlock is returning a List
     unwrap (List l) = l
 
-htmlBlock :: (Logger m, Characters s) => Parser s m Element
-htmlBlock = error "TODO: htmlBlock"
+htmlBlock :: forall m s. (Logger m, Characters s) => Parser s m Element
+htmlBlock = do
+  char '<'
+  tagName <- MPS.tokensToChunk (Proxy :: Proxy s) <$> (some ((notFollowedBy ((try $ void tagNameEnd) <|> blockEnding)) *> (anySingle :: Parser s m (Token s))))
+  notFollowedBy blockEnding
+  ending <- tagNameEnd
+  hasEnded <- case ending of
+    '/' -> fail "no opening tag"
+    '>' -> pure True
+    _ -> pure False
+  attrs <-
+    if not hasEnded
+      then
+        error "TODO: handle attributes"
+      else pure Nothing
+  inside <- many (notFollowedBy (chunk $ "<" <> tagName <> "/>"))
+  pure $ HTML $ HTMLTag $ T.concat ["<", tagName, fromMaybe "" attrs, ">"]
+  where
+    tagNameEnd :: Parser s m Char
+    tagNameEnd = spaceChar <|> char '>' <|> char '/'
 
 paragraphBlock :: (Logger m, Characters s) => Parser s m Element
 paragraphBlock = Paragraph . P <$> (many inlineText)
