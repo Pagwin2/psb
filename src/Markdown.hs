@@ -25,11 +25,20 @@ import qualified Text.Megaparsec.Stream as MPS
 
 type Parser = ParsecT Void
 
-class (Token s ~ Char, Stream s, IsString (Tokens s), Monoid (Tokens s), Eq (Tokens s), Show s) => Characters s
+class (Token s ~ Char, Stream s, ToText (Tokens s), IsString (Tokens s), Monoid (Tokens s), Eq (Tokens s), Show s) => Characters s
+
+class ToText t where
+  toText :: t -> Text
 
 instance Characters Text
 
+instance ToText Text where
+  toText = id
+
 instance Characters String
+
+instance ToText String where
+  toText = T.pack
 
 string :: (MP.MonadParsec e s m) => Tokens s -> m (Tokens s)
 string = chunk
@@ -169,7 +178,6 @@ htmlBlock = do
   notFollowedBy blockEnding
   ending <- tagNameEnd
   hasEnded <- case ending of
-    '/' -> fail "no opening tag"
     '>' -> pure True
     _ -> pure False
   attrs <-
@@ -177,11 +185,13 @@ htmlBlock = do
       then
         error "TODO: handle attributes"
       else pure Nothing
-  inside <- many (notFollowedBy (chunk $ "<" <> tagName <> "/>"))
-  pure $ HTML $ HTMLTag $ T.concat ["<", tagName, fromMaybe "" attrs, ">"]
+  -- technically not standard markdown but I don't want to write a full HTML parser in my
+  inside <- many (notFollowedBy ((chunk $ "</" <> tagName <> ">") <|> chunk "</>") *> anySingle)
+  end <- toText <$> ((chunk $ "</" <> tagName <> ">") <|> chunk "</>")
+  pure $ HTML $ HTMLTag $ T.concat ["<", toText tagName, fromMaybe "" attrs, ">", T.pack inside, if end == "</>" then "" else end]
   where
     tagNameEnd :: Parser s m Char
-    tagNameEnd = spaceChar <|> char '>' <|> char '/'
+    tagNameEnd = spaceChar <|> char '>'
 
 paragraphBlock :: (Logger m, Characters s) => Parser s m Element
 paragraphBlock = Paragraph . P <$> (many inlineText)
