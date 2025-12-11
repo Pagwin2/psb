@@ -8,11 +8,12 @@
 module Psb.Main where
 
 import Config
-import Control.Monad (forM, when)
+import Control.Monad (when)
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
 import qualified Data.Ord as Ord
 import qualified Data.Text as T
+import Data.Traversable (traverse)
 import Deriving.Aeson
 import Deriving.Aeson.Stock (Vanilla)
 import Development.Shake (Action, Rules, (%>), (|%>), (~>))
@@ -121,7 +122,7 @@ home =
     postPaths <- getPublishedPosts isDraft
     posts <-
       sortOn (Ord.Down . postDate)
-        <$> forM postPaths readPost
+        <$> traverse readPost postPaths
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
     time <- Utilities.Action.now
