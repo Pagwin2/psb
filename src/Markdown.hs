@@ -18,9 +18,9 @@ import qualified Data.Text as T
 import Data.Void (Void)
 import IR
 import Logger (Logger (logDebug))
-import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, chunk, count, eof, manyTill, notFollowedBy, satisfy, skipSome, try, (<?>))
+import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, chunk, count, eof, lookAhead, manyTill, notFollowedBy, satisfy, sepBy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
-import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, spaceChar)
+import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, space, spaceChar)
 import qualified Text.Megaparsec.Stream as MPS
 
 type Parser = ParsecT Void
@@ -72,10 +72,10 @@ blockEnding :: (Logger m, Characters s) => Parser s m ()
 blockEnding = lineEnding *> lineEnding
 
 -- TODO: check if inlineHTML needs to be handled in any markdown posts
-inlineText :: (Logger m, Characters s) => Parser s m InlineText
+inlineText :: forall m s. (Logger m, Characters s) => Parser s m InlineText
 inlineText = inlineText' (fail "notFollowedBy noop")
   where
-    inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, plain_text disallow]
+    inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, try inline_html, plain_text disallow]
     between' start end middle_piece = between start end $ many ((notFollowedBy end) *> middle_piece)
 
     strikethrough disallow = Crossed <$> (between' (string "~~") (string "~~") (inlineText' (disallow <|> (void $ string "~~"))))
@@ -110,6 +110,13 @@ inlineText = inlineText' (fail "notFollowedBy noop")
         Link {linkText = [Text altText], url, title} -> pure (altText, url, title)
         _ -> fail "Image alt text must be normal text, cannot be stylized in any way"
       pure Image {altText, url, title}
+
+    inline_html =
+      HTMLInline <$> do
+        char '<'
+        inner <- toText . MPS.tokensToChunk (Proxy :: Proxy s) <$> (many (anySingleBut '>'))
+        char '>'
+        pure $ mconcat ["<", inner, ">"]
 
     plain_text disallow = Text . T.pack <$> (many ((notFollowedBy (blockEnding <|> disallow)) *> anySingle))
 
@@ -183,15 +190,22 @@ htmlBlock = do
   attrs <-
     if not hasEnded
       then
-        error "TODO: handle attributes"
+        Just . toText . mconcat <$> htmlAttrs
       else pure Nothing
   -- technically not standard markdown but I don't want to write a full HTML parser in my
   inside <- many (notFollowedBy ((chunk $ "</" <> tagName <> ">") <|> chunk "</>") *> anySingle)
   end <- toText <$> ((chunk $ "</" <> tagName <> ">") <|> chunk "</>")
   pure $ HTML $ HTMLTag $ T.concat ["<", toText tagName, fromMaybe "" attrs, ">", T.pack inside, if end == "</>" then "" else end]
   where
-    tagNameEnd :: Parser s m Char
-    tagNameEnd = spaceChar <|> char '>'
+    tagNameEnd = (lookAhead spaceChar <* space) <|> char '>'
+    htmlAttrs = ((notFollowedBy $ char '>') *> htmlAttr) `sepBy` space
+    htmlAttr = do
+      name <- many (notFollowedBy (lineEnding <|> (void $ char '=')) *> anySingle)
+      char '='
+      char '"'
+      value <- many (notFollowedBy (lineEnding <|> (void $ char '"')) *> anySingle)
+      char '"'
+      pure $ mconcat [name, "=\"", value, "\""]
 
 paragraphBlock :: (Logger m, Characters s) => Parser s m Element
 paragraphBlock = Paragraph . P <$> (many inlineText)

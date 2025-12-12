@@ -149,7 +149,7 @@ rss :: Rules ()
 rss =
   outputDir </> "index.xml" %> \target -> do
     postPaths <- getPublishedPosts isDraft
-    posts <- map fromPost . sortOn (Ord.Down . postDate) <$> forM postPaths readPost
+    posts <- map fromPost . sortOn (Ord.Down . postDate) <$> traverse readPost postPaths
     time <- Utilities.Action.now
     applyTemplateAndWrite "feed.xml" (Rss time posts) target
 
