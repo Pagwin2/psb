@@ -1,22 +1,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Logger (Logger (logError, logWarning, logInfo, logDebug)) where
+module Logger (Logger (logError, logWarning, logInfo, logDebug, logCallStack)) where
 
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Trans.State (StateT, modify)
 import Control.Monad.Trans.Writer (WriterT, tell)
 import Data.Functor.Identity (Identity)
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import qualified Data.Text.IO as TIO
+import GHC.Stack (HasCallStack, callStack, popCallStack, prettyCallStack)
 
 class (Monad m) => Logger m where
   logError :: T.Text -> m ()
   logWarning :: T.Text -> m ()
   logInfo :: T.Text -> m ()
   logDebug :: T.Text -> m ()
+  logCallStack :: (HasCallStack) => m ()
+  logCallStack = logDebug . T.pack $ prettyCallStack $ popCallStack $ popCallStack callStack
 
 logIO :: T.Text -> T.Text -> IO ()
-logIO kind msg = T.putStrLn $ kind <> ": " <> msg
+logIO kind msg = TIO.putStrLn $ kind <> ": " <> msg
 
 instance Logger IO where
   logError = logIO "error"

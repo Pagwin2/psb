@@ -16,8 +16,9 @@ import Data.String (IsString)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void (Void)
+import GHC.Stack (HasCallStack, callStack, prettyCallStack)
 import IR
-import Logger (Logger (logDebug))
+import Logger (Logger (logCallStack, logDebug))
 import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut, between, choice, chunk, count, eof, lookAhead, manyTill, notFollowedBy, satisfy, sepBy, skipSome, try, (<?>))
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, space, spaceChar)
@@ -62,34 +63,38 @@ element =
       try htmlBlock <?> "HTML Block",
       paragraphBlock <?> "Paragarph"
     ]
+    <* logDebug "element end"
     <* blockEnding
 
-lineEnding :: (Logger m, Characters s) => Parser s m ()
-lineEnding = (try eof) <|> void newline
+lineEnding :: (Logger m, Characters s, HasCallStack) => Parser s m ()
+lineEnding = {-logCallStack *>-} ((try eof) <|> void newline)
 
 -- we don't need to parse eof, lineEnding does that, eof *> eof works just fine in place of eof
-blockEnding :: (Logger m, Characters s) => Parser s m ()
+blockEnding :: (Logger m, Characters s, HasCallStack) => Parser s m ()
 blockEnding = lineEnding *> lineEnding
 
--- TODO: check if inlineHTML needs to be handled in any markdown posts
-inlineText :: forall m s. (Logger m, Characters s) => Parser s m InlineText
+inlineText :: forall m s. (HasCallStack, Logger m, Characters s) => Parser s m InlineText
 inlineText = inlineText' $ fail "noop on notFollowedBy"
   where
+    inlineText' :: (HasCallStack) => Parser s m () -> Parser s m InlineText
     inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, try inline_html, plain_text disallow]
-    between' start end middle_piece = between start end $ many ((notFollowedBy end) *> middle_piece)
+
+    between' start end middle_piece = between start end $ many ((notFollowedBy ((try $ void end) <|> blockEnding)) *> middle_piece)
 
     strikethrough disallow = Crossed <$> (between' (string "~~") (disallow <|> (void $ string "~~")) (inlineText' (disallow <|> (void $ string "~~"))))
 
+    -- TODO: bold and italic eat a lineEnding that they shouldn't for some reason
     bold disallow = Bold <$> (between' (string "**") (disallow <|> (void $ string "**")) (inlineText' (disallow <|> (void $ string "**"))))
 
+    italic :: (HasCallStack) => Parser s m () -> Parser s m InlineText
     italic disallow = Italic <$> (between' (char '*') ((void $ char '*') <|> disallow) (inlineText' (disallow <|> (void $ char '*'))))
 
     underlined disallow = Underlined <$> (between' (string "__") ((void $ string "__") <|> disallow) (inlineText' (disallow <|> (void $ string "__"))))
 
-    code = InlineCode . T.pack <$> (between' (char '`') (char '`') (notFollowedBy lineEnding *> anySingle))
-
+    code = InlineCode . T.pack <$> (between' (char '`') (char '`') ((notFollowedBy lineEnding) *> anySingle))
+    link :: (HasCallStack) => Parser s m () -> Parser s m InlineText
     link disallow = do
-      linkText <- between' (char '[') ((void $ char ']') <|> disallow) (logDebug "hmm" *> inlineText' (disallow <|> (void $ char ']')))
+      linkText <- between' (char '[') ((void $ char ']') <|> disallow) (inlineText' (disallow <|> (void $ char ']')))
       (url, title) <- do
         char '('
         -- might fail on newline char situation
@@ -123,7 +128,7 @@ inlineText = inlineText' $ fail "noop on notFollowedBy"
 headingBlock :: (Logger m, Characters s) => Parser s m Element
 headingBlock = do
   heading_level <- length <$> (some $ char '#')
-  optional $ char ' '
+  optional spaceChar
   text <- many ((notFollowedBy blockEnding) *> inlineText)
   pure $ Heading $ H {level = heading_level, text}
 
@@ -159,7 +164,7 @@ listBlock list_type prefix child_parser_factory nest_level = do
     listItem = do
       count nest_level ((try $ void $ char '\t') <|> (void $ string "    "))
       prefix
-      content <- many inlineText
+      content <- many ((notFollowedBy lineEnding) *> inlineText)
       child <- optional $ child_parser_factory $ nest_level + 1
       pure $ LI {content, child}
 

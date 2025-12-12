@@ -52,7 +52,7 @@ generic_parse inp = lift $ timeout 1000000 $ evaluate $ parse (Markdown.document
 
 all_compiles :: Property
 all_compiles = property $ do
-  xs <- forAll $ Gen.text (Range.linear 0 10) Gen.ascii
+  xs <- forAll $ Gen.text (Range.linear 0 100) Gen.ascii
   parsed <- generic_parse xs
   case parsed of
     Nothing -> fail $ "Hit Timeout"
