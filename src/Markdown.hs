@@ -49,7 +49,7 @@ metadata = bound *> fmap T.pack (many $ try (char '-' <* notFollowedBy (chunk "-
     bound = string "---"
 
 document :: (Logger m, Characters s) => Parser s m Document
-document = Doc <$> many element
+document = Doc <$> many ((notFollowedBy eof) *> element)
 
 element :: (Logger m, Characters s) => Parser s m Element
 element =
@@ -73,23 +73,23 @@ blockEnding = lineEnding *> lineEnding
 
 -- TODO: check if inlineHTML needs to be handled in any markdown posts
 inlineText :: forall m s. (Logger m, Characters s) => Parser s m InlineText
-inlineText = inlineText' (fail "notFollowedBy noop")
+inlineText = inlineText' $ fail "noop on notFollowedBy"
   where
     inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, try inline_html, plain_text disallow]
     between' start end middle_piece = between start end $ many ((notFollowedBy end) *> middle_piece)
 
-    strikethrough disallow = Crossed <$> (between' (string "~~") (string "~~") (inlineText' (disallow <|> (void $ string "~~"))))
+    strikethrough disallow = Crossed <$> (between' (string "~~") (disallow <|> (void $ string "~~")) (inlineText' (disallow <|> (void $ string "~~"))))
 
-    bold disallow = Bold <$> (between' (string "**") (string "**") (inlineText' (disallow <|> (void $ string "**"))))
+    bold disallow = Bold <$> (between' (string "**") (disallow <|> (void $ string "**")) (inlineText' (disallow <|> (void $ string "**"))))
 
-    italic disallow = Italic <$> (between' (char '*') (char '*') (inlineText' (disallow <|> (void $ char '*'))))
+    italic disallow = Italic <$> (between' (char '*') ((void $ char '*') <|> disallow) (inlineText' (disallow <|> (void $ char '*'))))
 
-    underlined disallow = Underlined <$> (between' (string "__") (string "__") (inlineText' (disallow <|> (void $ string "__"))))
+    underlined disallow = Underlined <$> (between' (string "__") ((void $ string "__") <|> disallow) (inlineText' (disallow <|> (void $ string "__"))))
 
     code = InlineCode . T.pack <$> (between' (char '`') (char '`') (notFollowedBy lineEnding *> anySingle))
 
     link disallow = do
-      linkText <- between' (char '[') (char ']') (inlineText' (disallow <|> (void $ char ']')))
+      linkText <- between' (char '[') ((void $ char ']') <|> disallow) (logDebug "hmm" *> inlineText' (disallow <|> (void $ char ']')))
       (url, title) <- do
         char '('
         -- might fail on newline char situation
@@ -124,7 +124,7 @@ headingBlock :: (Logger m, Characters s) => Parser s m Element
 headingBlock = do
   heading_level <- length <$> (some $ char '#')
   optional $ char ' '
-  text <- many $ inlineText
+  text <- many ((notFollowedBy blockEnding) *> inlineText)
   pure $ Heading $ H {level = heading_level, text}
 
 fencedCodeBlock :: (Logger m, Characters s) => Parser s m Element
@@ -208,4 +208,4 @@ htmlBlock = do
       pure $ mconcat [name, "=\"", value, "\""]
 
 paragraphBlock :: (Logger m, Characters s) => Parser s m Element
-paragraphBlock = Paragraph . P <$> (many inlineText)
+paragraphBlock = Paragraph . P <$> (many ((notFollowedBy blockEnding) *> inlineText))
