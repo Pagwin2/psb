@@ -53,7 +53,6 @@ generic_parse inp = lift $ timeout 1000000 $ evaluate $ parse (Markdown.document
 all_compiles :: Property
 all_compiles = property $ do
   xs <- forAll $ Gen.text (Range.linear 0 10) Gen.ascii
-  annotate $ T.unpack xs
   parsed <- generic_parse xs
   case parsed of
     Nothing -> fail $ "Hit Timeout"
@@ -115,7 +114,6 @@ code_block = property $ do
   language <- forAll $ Gen.text (Range.linear 1 10) Gen.alpha
   code <- forAll $ Gen.text (Range.linear 1 10) Gen.alpha
   let input = "```" <> language <> "\n" <> code <> "\n```"
-  annotate $ "Input: " <> T.unpack input
   parsed <- generic_parse input
 
   case parsed of
@@ -129,7 +127,6 @@ code_block_hanging = property $ do
   language <- forAll $ Gen.text (Range.linear 1 10) Gen.alpha
   code <- forAll $ Gen.text (Range.linear 1 10) Gen.alpha
   let input = "```" <> language <> "\n" <> code <> "```"
-  annotate $ "Input: " <> T.unpack input
   parsed <- generic_parse input
 
   case parsed of
@@ -164,7 +161,7 @@ unordered_list = property $ do
 
   case parsed of
     Nothing -> fail $ "Hit Timeout"
-    (Just (Right (Doc [List (L {list_type = Unordered, items = [LI {content = [Text text_1], children = []}, LI {content = [Text text_2], children = []}]})]))) -> success
+    (Just (Right (Doc [List (L {list_type = Unordered, items = [LI {content = [Text text_1], child = Nothing}, LI {content = [Text text_2], child = Nothing}]})]))) -> success
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e
 
@@ -181,7 +178,7 @@ header_after_unordered_list = property $ do
 
   case parsed of
     Nothing -> fail $ "Hit Timeout"
-    (Just (Right (Doc [List (L {list_type = Unordered, items = [LI {content = [Text bullet_text], children = []}]}), Heading (H {level = header_level, text = [Text header_text]})]))) -> success
+    (Just (Right (Doc [List (L {list_type = Unordered, items = [LI {content = [Text bullet_text], child = Nothing}]}), Heading (H {level = header_level, text = [Text header_text]})]))) -> success
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e
 
@@ -197,7 +194,7 @@ ordered_list = property $ do
 
   case parsed of
     Nothing -> fail $ "Hit Timeout"
-    (Just (Right (Doc [List (L {list_type = Ordered, items = [LI {content = [Text item_1], children = []}, LI {content = [Text item_2], children = []}, LI {content = [Text item_3], children = []}]})]))) -> success
+    (Just (Right (Doc [List (L {list_type = Ordered, items = [LI {content = [Text item_1], child = Nothing}, LI {content = [Text item_2], child = Nothing}, LI {content = [Text item_3], child = Nothing}]})]))) -> success
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e
 
@@ -215,9 +212,9 @@ multiple_ordered_lists = property $ do
     ( Just
         ( Right
             ( Doc
-                [ List (L {list_type = Ordered, items = [LI {content = [Text item_1], children = []}]}),
-                  List (L {list_type = Ordered, items = [LI {content = [Text item_2], children = []}]}),
-                  List (L {list_type = Ordered, items = [LI {content = [Text item_3], children = []}]})
+                [ List (L {list_type = Ordered, items = [LI {content = [Text item_1], child = Nothing}]}),
+                  List (L {list_type = Ordered, items = [LI {content = [Text item_2], child = Nothing}]}),
+                  List (L {list_type = Ordered, items = [LI {content = [Text item_3], child = Nothing}]})
                   ]
               )
           )
@@ -242,7 +239,7 @@ nested_unordered_list = property $ do
     ( Just
         ( Right
             ( Doc
-                [ List (L {list_type = Unordered, items = [LI {content = [Text item_1], children = [L {list_type = Unordered, items = [LI {content = [Text item_2], children = []}]}]}, LI {content = [Text item_3], children = []}]})
+                [ List (L {list_type = Unordered, items = [LI {content = [Text item_1], child = Just (L {list_type = Unordered, items = [LI {content = [Text item_2], child = Nothing}]})}, LI {content = [Text item_3], child = Nothing}]})
                   ]
               )
           )
@@ -276,9 +273,9 @@ header_then_ordered_list = property $ do
                     ( L
                         { list_type = Ordered,
                           items =
-                            [ LI {content = [Text item_1], children = []},
-                              LI {content = [Text item_2], children = []},
-                              LI {content = [Text item_3], children = []}
+                            [ LI {content = [Text item_1], child = Nothing},
+                              LI {content = [Text item_2], child = Nothing},
+                              LI {content = [Text item_3], child = Nothing}
                               ]
                         }
                       )
