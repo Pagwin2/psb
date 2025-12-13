@@ -1,4 +1,4 @@
-FROM haskell
+FROM haskell:9.10-slim-bookworm
 
 RUN mkdir -p /github/workspace
 
