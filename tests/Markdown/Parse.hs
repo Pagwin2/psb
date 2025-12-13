@@ -29,6 +29,7 @@ main = do
       Group
         "Parse Tests"
         [ ("all_compile", all_compiles),
+          ("block_html_compile_edgecase", block_html_compile_edgecase),
           ("header_and_paragraph", header_and_paragraph),
           ("paragraph_and_header_and_paragraph", paragraph_and_header_and_paragraph),
           ("bold_and_header_and_paragraph", bold_and_header_and_paragraph),
@@ -41,7 +42,8 @@ main = do
           ("multiple_ordered_lists", multiple_ordered_lists),
           ("header_then_ordered_list", header_then_ordered_list),
           ("simple_nested_ordered_list", simple_nested_ordered_list),
-          ("nested_unordered_list", nested_unordered_list)
+          ("nested_unordered_list", nested_unordered_list),
+          ("greedy_plain_text", greedy_plain_text)
           -- ("",),
         ]
   if cond
@@ -55,6 +57,18 @@ all_compiles :: Property
 all_compiles = property $ do
   xs <- forAll $ Gen.text (Range.linear 0 100) Gen.ascii
   parsed <- generic_parse xs
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    (Just (Right _)) -> success
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
+block_html_compile_edgecase :: Property
+block_html_compile_edgecase = property $ do
+  let gen = forAll $ Gen.text (Range.linear 0 10) Gen.alphaNum
+  tagName <- gen
+  misc1 <- gen
+  misc2 <- gen
+  parsed <- generic_parse $ (T.concat ["<", tagName, ">", misc1, "</", tagName, "> ", misc2])
   case parsed of
     Nothing -> fail $ "Hit Timeout"
     (Just (Right _)) -> success
@@ -305,5 +319,20 @@ header_then_ordered_list = property $ do
               )
           )
       ) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
+greedy_plain_text :: Property
+greedy_plain_text = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alphaNum
+  pretext <- text_gen
+  shown <- text_gen
+  link <- text_gen
+
+  parsed <- generic_parse $ T.concat [pretext, "[", shown, "]", "(", link, ")"]
+
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    (Just (Right (Doc [Paragraph (P [Text (pretext), Link {linkText = [Text shown], url = link, title = Nothing}])]))) -> success
     (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
     (Just (Left e)) -> fail $ errorBundlePretty e

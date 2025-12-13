@@ -122,7 +122,14 @@ inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow
         char '>'
         pure $ mconcat ["<", inner, ">"]
 
-    plain_text disallow = Text . T.pack <$> (many ((notFollowedBy disallow) *> anySingle))
+    plain_text :: Parser s m () -> Parser s m InlineText
+    plain_text disallow = do
+      first <- optional $ ((notFollowedBy disallow) *> anySingle)
+      rem <- many ((notFollowedBy (disallow <|> (void $ choice $ (map char "*[~")))) *> anySingle)
+
+      pure $ Text $ T.pack $ case first of
+        Nothing -> []
+        Just c -> (c : rem)
 
 headingBlock :: (Logger m, Characters s) => Parser s m Element
 headingBlock = do
@@ -203,6 +210,9 @@ htmlBlock = do
   -- technically not standard markdown but I don't want to write a full HTML parser in my
   inside <- many (notFollowedBy ((chunk $ "</" <> tagName <> ">") <|> chunk "</>") *> anySingle)
   end <- toText <$> ((chunk $ "</" <> tagName <> ">") <|> chunk "</>")
+  -- if a blockEnding after some whitespace isn't next when we should parse this as inline text/paragraph
+  many ((notFollowedBy lineEnding) *> spaceChar)
+  lookAhead blockEnding
   pure $ HTML $ HTMLTag $ T.concat ["<", toText tagName, fromMaybe "" attrs, ">", T.pack inside, if end == "</>" then "" else end]
   where
     tagNameEnd = (lookAhead spaceChar <* space) <|> char '>'
