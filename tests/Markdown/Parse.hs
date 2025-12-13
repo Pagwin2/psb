@@ -40,6 +40,7 @@ main = do
           ("ordered_list", ordered_list),
           ("multiple_ordered_lists", multiple_ordered_lists),
           ("header_then_ordered_list", header_then_ordered_list),
+          ("simple_nested_ordered_list", simple_nested_ordered_list),
           ("nested_unordered_list", nested_unordered_list)
           -- ("",),
         ]
@@ -215,6 +216,27 @@ multiple_ordered_lists = property $ do
                 [ List (L {list_type = Ordered, items = [LI {content = [Text item_1], child = Nothing}]}),
                   List (L {list_type = Ordered, items = [LI {content = [Text item_2], child = Nothing}]}),
                   List (L {list_type = Ordered, items = [LI {content = [Text item_3], child = Nothing}]})
+                  ]
+              )
+          )
+      ) -> success
+    (Just (Right tree)) -> fail $ "Incorrect syntax tree: " <> show tree
+    (Just (Left e)) -> fail $ errorBundlePretty e
+
+simple_nested_ordered_list :: Property
+simple_nested_ordered_list = property $ do
+  let text_gen = forAll $ Gen.text (Range.linear 1 10) Gen.alpha
+  item_1 <- text_gen
+  item_2 <- text_gen
+  let input = "1) " <> item_1 <> "\n    1) " <> item_2
+
+  parsed <- generic_parse input
+  case parsed of
+    Nothing -> fail $ "Hit Timeout"
+    ( Just
+        ( Right
+            ( Doc
+                [ List (L {list_type = Ordered, items = [LI {content = [Text item_1], child = Just (L {list_type = Ordered, items = [LI {content = [Text item_2], child = Nothing}]})}]})
                   ]
               )
           )

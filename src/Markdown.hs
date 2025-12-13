@@ -63,7 +63,6 @@ element =
       try htmlBlock <?> "HTML Block",
       paragraphBlock <?> "Paragarph"
     ]
-    <* logDebug "element end"
     <* blockEnding
 
 lineEnding :: (Logger m, Characters s, HasCallStack) => Parser s m ()
@@ -162,12 +161,14 @@ listBlock list_type prefix child_parser_factory nest_level = do
   pure $ List $ L {list_type, items}
   where
     listItem = do
-      -- TODO
-      error "Need to handle newlines and not consuming blockEndings here due to nesting"
       count nest_level ((try $ void $ char '\t') <|> (void $ (count 4 $ char ' ')))
       prefix
       content <- many ((notFollowedBy lineEnding) *> inlineText' lineEnding)
+
+      optional ((notFollowedBy blockEnding) *> lineEnding)
+
       child <- optional $ child_parser_factory $ nest_level + 1
+
       pure $ LI {content, child}
 
 unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
