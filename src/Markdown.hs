@@ -125,7 +125,7 @@ inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow
     plain_text :: Parser s m () -> Parser s m InlineText
     plain_text disallow = do
       first <- optional $ ((notFollowedBy disallow) *> anySingle)
-      rem <- many ((notFollowedBy (disallow <|> (void $ choice $ (map char "*[~")))) *> anySingle)
+      rem <- many ((notFollowedBy (disallow <|> (void $ choice $ (map char "`*[~")))) *> anySingle)
 
       pure $ Text $ T.pack $ case first of
         Nothing -> []
