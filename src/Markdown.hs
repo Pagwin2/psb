@@ -74,27 +74,27 @@ blockEnding :: (Logger m, Characters s, HasCallStack) => Parser s m ()
 blockEnding = lineEnding *> lineEnding
 
 inlineText :: forall m s. (HasCallStack, Logger m, Characters s) => Parser s m InlineText
-inlineText = inlineText' $ fail "noop on notFollowedBy"
+inlineText = inlineText' blockEnding
+
+inlineText' :: forall m s. (HasCallStack, Logger m, Characters s) => Parser s m () -> Parser s m InlineText
+inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, try inline_html, plain_text disallow]
   where
-    inlineText' :: (HasCallStack) => Parser s m () -> Parser s m InlineText
-    inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow, try $ italic disallow, try $ underlined disallow, try code, try $ link disallow, try $ image disallow, try inline_html, plain_text disallow]
+    between' disallow start end middle_piece = between start end $ many ((notFollowedBy ((try $ void end) <|> disallow)) *> middle_piece)
 
-    between' start end middle_piece = between start end $ many ((notFollowedBy ((try $ void end) <|> blockEnding)) *> middle_piece)
-
-    strikethrough disallow = Crossed <$> (between' (string "~~") (disallow <|> (void $ string "~~")) (inlineText' (disallow <|> (void $ string "~~"))))
+    strikethrough disallow = Crossed <$> (between' disallow (string "~~") (void $ string "~~") (inlineText' (disallow <|> (void $ string "~~"))))
 
     -- TODO: bold and italic eat a lineEnding that they shouldn't for some reason
-    bold disallow = Bold <$> (between' (string "**") (disallow <|> (void $ string "**")) (inlineText' (disallow <|> (void $ string "**"))))
+    bold disallow = Bold <$> (between' disallow (string "**") (disallow <|> (void $ string "**")) (inlineText' (disallow <|> (void $ string "**"))))
 
     italic :: (HasCallStack) => Parser s m () -> Parser s m InlineText
-    italic disallow = Italic <$> (between' (char '*') ((void $ char '*') <|> disallow) (inlineText' (disallow <|> (void $ char '*'))))
+    italic disallow = Italic <$> (between' disallow (char '*') ((void $ char '*') <|> disallow) (inlineText' (disallow <|> (void $ char '*'))))
 
-    underlined disallow = Underlined <$> (between' (string "__") ((void $ string "__") <|> disallow) (inlineText' (disallow <|> (void $ string "__"))))
+    underlined disallow = Underlined <$> (between' disallow (string "__") ((void $ string "__") <|> disallow) (inlineText' (disallow <|> (void $ string "__"))))
 
-    code = InlineCode . T.pack <$> (between' (char '`') (char '`') ((notFollowedBy lineEnding) *> anySingle))
+    code = InlineCode . T.pack <$> (between' disallow (char '`') (char '`') ((notFollowedBy lineEnding) *> anySingle))
     link :: (HasCallStack) => Parser s m () -> Parser s m InlineText
     link disallow = do
-      linkText <- between' (char '[') ((void $ char ']') <|> disallow) (inlineText' (disallow <|> (void $ char ']')))
+      linkText <- between' disallow (char '[') ((void $ char ']') <|> disallow) (inlineText' (disallow <|> (void $ char ']')))
       (url, title) <- do
         char '('
         -- might fail on newline char situation
@@ -123,7 +123,7 @@ inlineText = inlineText' $ fail "noop on notFollowedBy"
         char '>'
         pure $ mconcat ["<", inner, ">"]
 
-    plain_text disallow = Text . T.pack <$> (many ((notFollowedBy (blockEnding <|> disallow)) *> anySingle))
+    plain_text disallow = Text . T.pack <$> (many ((notFollowedBy disallow) *> anySingle))
 
 headingBlock :: (Logger m, Characters s) => Parser s m Element
 headingBlock = do
@@ -158,20 +158,22 @@ blockquoteBlock = BlockQuote . Q . concat <$> (some blockquoteLine)
 -- nesting amount
 listBlock :: (Logger m, Characters s) => ListType -> Parser s m prefix -> (Int -> Parser s m List) -> Int -> Parser s m Element
 listBlock list_type prefix child_parser_factory nest_level = do
-  items <- some $ (try (listItem <* notFollowedBy blockEnding)) <|> (listItem <* lineEnding)
+  items <- some $ listItem
   pure $ List $ L {list_type, items}
   where
     listItem = do
-      count nest_level ((try $ void $ char '\t') <|> (void $ string "    "))
+      -- TODO
+      error "Need to handle newlines and not consuming blockEndings here due to nesting"
+      count nest_level ((try $ void $ char '\t') <|> (void $ (count 4 $ char ' ')))
       prefix
-      content <- many ((notFollowedBy lineEnding) *> inlineText)
+      content <- many ((notFollowedBy lineEnding) *> inlineText' lineEnding)
       child <- optional $ child_parser_factory $ nest_level + 1
       pure $ LI {content, child}
 
 unorderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
 unorderedListBlock = listBlock Unordered unordered_prefix (\level -> unwrap <$> ((try $ unorderedListBlock level) <|> orderedListBlock level))
   where
-    unordered_prefix = (choice $ map char "*-+") *> optional spaceChar
+    unordered_prefix = (choice $ map char "*-+") *> (notFollowedBy newline *> spaceChar)
     -- not exhaustive but we know listBlock is returning a List
     unwrap (List l) = l
 
@@ -179,7 +181,7 @@ orderedListBlock :: (Logger m, Characters s) => Int -> Parser s m Element
 orderedListBlock = listBlock Ordered ordered_prefix (\level -> unwrap <$> ((try $ unorderedListBlock level) <|> orderedListBlock level))
   where
     -- regex equivalent: [0-9]+[.)]\s?
-    ordered_prefix = (some digitChar) *> (char '.' <|> char ')') *> optional spaceChar
+    ordered_prefix = (some digitChar) *> (char '.' <|> char ')') *> (notFollowedBy newline *> spaceChar)
     -- not exhaustive but we know listBlock is returning a List
     unwrap (List l) = l
 
