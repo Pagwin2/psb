@@ -1,11 +1,11 @@
-- [ ] Figure out what the fuck is going on with the soft engineering retrospective post or accept it's broken and rewrite the markdown parser later
-- [ ] add rst or org support and convert markdown handling to custom parser instead of pandoc
-- [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
-    - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
 - [ ] minify js and css when copying over instead of just copying
 - [ ] setup fingerprinting in file names for css and js
+- [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
+    - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
     - https://hackage.haskell.org/package/file-embed
     - https://hackage.haskell.org/package/fsnotify
--  [ ] see if performance can be improved (it isn't slow atm but it definitely feels like there's a bottleneck)
+- [ ] Make a function which takes IR and spits out some kind of table of contents
+- [ ] add rst or org support and convert markdown handling to custom parser instead of pandoc
+-  [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing
