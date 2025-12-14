@@ -3,4 +3,4 @@ name: 'psb'
 description: 'Use PSB to build static a static site'
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/pagwin2/psb:v1'
+  image: 'docker://ghcr.io/pagwin2/psb:v2'
