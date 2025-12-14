@@ -1,6 +1,14 @@
 - [ ] minify js and css when copying over instead of just copying
 - [ ] setup fingerprinting in file names for css and js
-- [ ] process source code blocks with tree sitter https://hackage.haskell.org/package/tree-sitter
+- [ ] process source code blocks to syntax highlight them
+    - tree sitter https://hackage.haskell.org/package/tree-sitter
+        - Alternatively do the Rust <-> Haskell binding myself
+            - https://www.well-typed.com/blog/2023/03/purgatory/
+            - https://willmcpherson2.substack.com/p/calling-rust-from-haskell
+            - https://github.com/BeFunctional/haskell-foreign-rust
+            - https://github.com/BeFunctional/haskell-rust-ffi
+        - https://crates.io/crates/tree-sitter-highlight
+        - Or potentially https://docs.rs/arborium/latest/arborium/
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
