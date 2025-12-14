@@ -7,5 +7,6 @@
     - https://hackage.haskell.org/package/file-embed
     - https://hackage.haskell.org/package/fsnotify
 - [ ] Make a function which takes IR and spits out some kind of table of contents
-- [ ] add rst or org support and convert markdown handling to custom parser instead of pandoc
+- [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
+    - [ ] Add in functionality for footnotes
 -  [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing
