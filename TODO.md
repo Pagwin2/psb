@@ -7,6 +7,7 @@
             - https://willmcpherson2.substack.com/p/calling-rust-from-haskell
             - https://github.com/BeFunctional/haskell-foreign-rust
             - https://github.com/BeFunctional/haskell-rust-ffi
+            - Borsh
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
