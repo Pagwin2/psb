@@ -23,7 +23,9 @@ import qualified Development.Shake.FilePath as FP
 import Templates
 import Types
 import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
+import qualified Utilities.CSS as CSS
 import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
+import qualified Utilities.Javascript as JS
 
 -- target = thing we want
 -- Rule = pattern of thing being made + actions to produce the thing
@@ -51,6 +53,9 @@ buildSite = do
   --  path concat each asset path so it's output into the outputDir
   Shake.need $ map (outputDir </>) assetPaths
 
+  -- handle js, css and anything else we want to process before moving
+  Shake.need <$> Shake.getDirectoryFiles "" resourceGlobs
+
   -- take the misc pages which aren't blog posts and make their html files
   Shake.need $ map indexHtmlOutputPath pagePaths
 
@@ -67,6 +72,8 @@ buildRules = do
   assets
   postsRule
   rss
+  css_resources
+  js_resources
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
@@ -74,6 +81,18 @@ assets =
   map (outputDir </>) assetGlobs |%> \target -> do
     let src = FP.dropDirectory1 target
     Shake.copyFileChanged src target
+
+css_resources :: Rules ()
+css_resources =
+  map (outputDir </>) cssGlobs |%> \target -> do
+    src <- Shake.readFile' $ FP.dropDirectory1 target
+    Shake.writeFileChanged target $ CSS.minify src
+
+js_resources :: Rules ()
+js_resources =
+  map (outputDir </>) jsGlobs |%> \target -> do
+    src <- Shake.readFile' $ FP.dropDirectory1 target
+    Shake.writeFileChanged target $ JS.minify src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
 postsRule :: Rules ()

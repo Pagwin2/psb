@@ -27,8 +27,8 @@ common warnings
 
 library
     hs-source-dirs: src
-    exposed-modules: Markdown HTML Logger IR Logger.Shake Psb.Main Utilities Utilities.FilePath Utilities.Action Templates Types Config
-    build-depends:    base >=4.20 && < 4.21, mustache >=2.4.2, shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2
+    exposed-modules: Markdown HTML Logger IR Logger.Shake Psb.Main Utilities Utilities.FilePath Utilities.Action Utilities.Javascript Utilities.CSS Templates Types Config
+    build-depends:    base >=4.20 && < 4.21, mustache >=2.4.2, shake >= 0.19.8, deriving-aeson >= 0.2.9, aeson, text >= 2.1.2, time, unordered-containers, yaml, megaparsec >= 9.7.0, transformers >= 0.6.2, css-syntax >= 0.1.0.2, language-ecmascript >= 0.19.1.0
     default-extensions: ApplicativeDo DataKinds NamedFieldPuns DerivingVia LambdaCase TypeApplications DeriveGeneric OverloadedRecordDot NamedFieldPuns DuplicateRecordFields DisambiguateRecordFields FlexibleInstances
 
 test-suite test-markdown-parse
