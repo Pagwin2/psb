@@ -72,6 +72,7 @@ buildRules = do
   assets
   postsRule
   rss
+  -- TODO: add rules for specifically the checksummed files which depend on the non-checksummed files
   css_resources
   js_resources
 

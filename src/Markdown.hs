@@ -23,23 +23,7 @@ import Text.Megaparsec (ParsecT, Stream, Token, Tokens, anySingle, anySingleBut,
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (alphaNumChar, char, digitChar, newline, space, spaceChar)
 import qualified Text.Megaparsec.Stream as MPS
-
-type Parser = ParsecT Void
-
-class (Token s ~ Char, Stream s, ToText (Tokens s), IsString (Tokens s), Monoid (Tokens s), Eq (Tokens s), Show s) => Characters s
-
-class ToText t where
-  toText :: t -> Text
-
-instance Characters Text
-
-instance ToText Text where
-  toText = id
-
-instance Characters String
-
-instance ToText String where
-  toText = T.pack
+import Utilities.Parsing
 
 string :: (MP.MonadParsec e s m) => Tokens s -> m (Tokens s)
 string = chunk
