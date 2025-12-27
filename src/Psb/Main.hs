@@ -72,7 +72,6 @@ buildRules = do
   assets
   postsRule
   rss
-  -- TODO: add rules for specifically the checksummed files which depend on the non-checksummed files
   css_resources
   js_resources
 
@@ -87,12 +86,14 @@ css_resources :: Rules ()
 css_resources =
   map (outputDir </>) cssGlobs |%> \target -> do
     src <- Shake.readFile' $ FP.dropDirectory1 target
+    -- TODO: write to fingerprinted location as well
     Shake.writeFileChanged target $ CSS.minify src
 
 js_resources :: Rules ()
 js_resources =
   map (outputDir </>) jsGlobs |%> \target -> do
     src <- Shake.readFile' $ FP.dropDirectory1 target
+    -- TODO: write to fingerprinted location as well
     Shake.writeFileChanged target $ JS.minify src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
