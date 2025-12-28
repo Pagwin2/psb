@@ -1,7 +1,8 @@
-- [ ] minify js and css when copying over instead of just copying (May just end up using Tree sitter for parsing due to lack of js packages)
+- [ ] minify js and css when copying over instead of just copying
     - CSS
         - https://github.com/wereHamster/haskell-css-syntax
     - JS
+        - Doing our own tokenizer lol
 - [ ] setup fingerprinting in file names for css and js
 - [ ] process source code blocks to syntax highlight them
     - tree sitter https://hackage.haskell.org/package/tree-sitter

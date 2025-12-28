@@ -3,6 +3,8 @@
 
 module Utilities.Javascript
   ( minify,
+    toTokens,
+    displayToken,
   )
 where
 
@@ -10,13 +12,29 @@ import Control.Applicative (Alternative (many), optional, (<|>))
 import Data.Data (Proxy (Proxy))
 import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
+import Data.Void (Void)
 import Logger
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), Stream (tokensToChunk), anySingle, choice)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, Stream (tokensToChunk), anySingle, choice, parse)
 import Text.Megaparsec.Char (hspace, newline, string)
 import Utilities.Parsing
 
-minify :: String -> String
-minify = id
+minify :: (Characters s) => [Token s] -> [Token s]
+minify = reduce_identifiers . remove_redundants
+  where
+    -- need to figure out how to add State into this
+    reduce_identifiers = map $ \token -> case token of
+      Identifier name -> Identifier name
+      v -> v
+    -- this could also use state so I can remove redundant newlines
+    remove_redundants = filter $ \token -> case token of
+      WhiteSpace -> False
+      _ -> True
+
+toTokens :: (Characters s) => s -> Either (ParseErrorBundle s Void) [Token s]
+toTokens = parse tokens ""
+
+displayToken :: (ToText s) => Token s -> s
+displayToken _ = error "TODO"
 
 -- yeah I guess I'm making a javascript tokenizer
 -- s is either Text or String
