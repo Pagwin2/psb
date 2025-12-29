@@ -4,6 +4,8 @@
     - JS
         - Doing our own tokenizer lol
 - [ ] setup fingerprinting in file names for css and js
+    - setup lambdas via: https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
+    - This may require a refactor of how we handle templates to use `object` instead of just using aeson integration from the mustache crate
 - [ ] process source code blocks to syntax highlight them
     - tree sitter https://hackage.haskell.org/package/tree-sitter
         - Alternatively do the Rust <-> Haskell binding myself
