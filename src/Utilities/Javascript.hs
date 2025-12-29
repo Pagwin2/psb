@@ -36,6 +36,11 @@ toTokens :: (Characters s) => String -> s -> Either (ParseErrorBundle s Void) [T
 toTokens = parse tokens
 
 displayToken :: (ToText s) => Token s -> s
+displayToken WhiteSpace = fromText " "
+displayToken (Identifier i) = i
+displayToken (HashBangComment text) = fromText ("#!" <> toText text)
+displayToken (SingleLineComment text) = fromText ("//" <> toText text)
+displayToken (MultiLineComment text) = fromText ("/*" <> toText text <> "*/")
 displayToken _ = error "TODO"
 
 -- yeah I guess I'm making a javascript tokenizer
@@ -44,9 +49,9 @@ displayToken _ = error "TODO"
 data Token s
   = WhiteSpace
   | LineTerminator
-  | SingleLineComment
-  | MultiLineComment
-  | HashBangComment
+  | SingleLineComment s
+  | MultiLineComment s
+  | HashBangComment s
   | Identifier s
   | PrivateIdentifier s
   | ReservedWord Reserved
@@ -84,20 +89,20 @@ token =
 hashbang_comment :: (Logger m, Characters s) => Parser s m (Token s)
 hashbang_comment = do
   string "#!"
-  many ((notFollowedBy newline) *> anySingle)
-  pure HashBangComment
+  text <- many ((notFollowedBy newline) *> anySingle)
+  pure $ HashBangComment $ fromString text
 
 comment :: (Logger m, Characters s) => Parser s m (Token s)
 comment = (try singleline_com) <|> multiline_com
   where
     singleline_com = do
       string "//"
-      many ((notFollowedBy newline) *> anySingle)
-      pure SingleLineComment
+      text <- many ((notFollowedBy newline) *> anySingle)
+      pure $ SingleLineComment $ fromString text
     multiline_com = do
       string "/*"
-      many ((notFollowedBy $ string "*/") *> anySingle)
-      pure MultiLineComment
+      text <- many ((notFollowedBy $ string "*/") *> anySingle)
+      pure $ MultiLineComment $ fromString text
 
 reserved_word :: (Logger m, Characters s) => Parser s m (Token s)
 reserved_word = choice [try await, try break, try case_, try catch_, try class_, try const, try continue, try debugger, try default_, try delete, try do_, try else_, try enum, try export, try extends, try false, try finally_, try for_, try function, try if_, try import_, try in_, try instanceof, try new, try null, try return, try super, try switch, try this, try throw_, try true, try try_, try typeof, try var, try void, try while, try with, yield]
