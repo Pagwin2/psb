@@ -9,6 +9,7 @@ module Psb.Main where
 
 import Config
 import Control.Monad (when)
+import Data.Aeson (ToJSON (toJSON))
 import qualified Data.HashMap.Strict as HM
 import Data.List (sortOn)
 import qualified Data.Ord as Ord
@@ -22,6 +23,7 @@ import Development.Shake.FilePath ((</>))
 import qualified Development.Shake.FilePath as FP
 import Templates
 import Text.Megaparsec (errorBundlePretty)
+import Text.Mustache (ToMustache (toMustache))
 import Types
 import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
 import qualified Utilities.CSS as CSS
@@ -172,6 +174,9 @@ data Rss = Rss
   }
   deriving (Show, Generic)
   deriving (ToJSON) via Vanilla Rss
+
+instance ToMustache Rss where
+  toMustache = toMustache . toJSON
 
 rss :: Rules ()
 rss =

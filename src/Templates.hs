@@ -8,16 +8,17 @@ import Development.Shake
 import qualified Development.Shake as Shake
 import Development.Shake.FilePath ((</>))
 import GHC.Stack (HasCallStack)
+import Text.Mustache (ToMustache)
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
 import Types (Post (postAuthor, postContent, postDate, postDescription, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostId, rPostIsoDate, rPostLink, rPostSummary, rPostTags, rPostTitle))
 import Utilities
 
-applyTemplate :: (HasCallStack, (ToJSON a)) => String -> a -> Action Text
+applyTemplate :: (HasCallStack, (ToMustache a)) => String -> a -> Action Text
 applyTemplate templateName context = do
   tmpl <- readTemplate $ "templates" </> templateName
   -- liftIO $ print $ A.toJSON context
-  case Mus.checkedSubstitute tmpl (A.toJSON context) of
+  case Mus.checkedSubstitute tmpl context of
     ([], text) -> return text
     (errs, _) ->
       error $
@@ -26,7 +27,7 @@ applyTemplate templateName context = do
           <> ": "
           <> unlines (map show errs)
 
-applyTemplateAndWrite :: (ToJSON a) => String -> a -> FilePath -> Action ()
+applyTemplateAndWrite :: (ToMustache a) => String -> a -> FilePath -> Action ()
 applyTemplateAndWrite templateName context outputPath =
   applyTemplate templateName context
     >>= Shake.writeFile' outputPath . T.unpack
@@ -41,7 +42,7 @@ readTemplate templatePath = do
   case eTemplate of
     Right template -> do
       Shake.need . Mus.getPartials . Mus.ast $ template
-      --Shake.putInfo $ "Read " <> templatePath
+      -- Shake.putInfo $ "Read " <> templatePath
       return template
     Left err -> fail $ show err
 

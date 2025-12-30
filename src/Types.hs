@@ -1,8 +1,10 @@
 module Types where
 
+import Data.Aeson (ToJSON (toJSON))
 import Data.Text (Text)
 import Deriving.Aeson
 import Deriving.Aeson.Stock (PrefixedSnake)
+import Text.Mustache (ToMustache (toMustache))
 
 -- pageSection is what css class should be specified in a style html element, I would do an enum but I foresee that being a mistake
 data Page = Page
@@ -15,6 +17,9 @@ data Page = Page
   }
   deriving (Show, Generic)
   deriving (ToJSON) via PrefixedSnake "page" Page
+
+instance ToMustache Page where
+  toMustache = toMustache . toJSON
 
 data RenderedPost = RenderedPost
   { rPostTitle :: Text,
@@ -31,6 +36,9 @@ data RenderedPost = RenderedPost
   deriving (Show, Generic)
   deriving (FromJSON, ToJSON) via PrefixedSnake "rPost" RenderedPost
 
+instance ToMustache RenderedPost where
+  toMustache = toMustache . toJSON
+
 data Post = Post
   { postTitle :: Text,
     postAuthor :: Maybe Text,
@@ -43,3 +51,6 @@ data Post = Post
   }
   deriving (Show, Generic)
   deriving (FromJSON, ToJSON) via PrefixedSnake "post" Post
+
+instance ToMustache Post where
+  toMustache = toMustache . toJSON
