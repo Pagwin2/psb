@@ -2,6 +2,7 @@ module Templates where
 
 import Data.Aeson (ToJSON)
 import qualified Data.Aeson as A
+import Data.HashMap.Strict (insert)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Development.Shake
@@ -11,8 +12,12 @@ import GHC.Stack (HasCallStack)
 import Text.Mustache (ToMustache)
 import qualified Text.Mustache as Mus
 import qualified Text.Mustache.Compile as Mus
+import qualified Text.Mustache.Types as Mus
 import Types (Post (postAuthor, postContent, postDate, postDescription, postLink, postTags, postTitle), RenderedPost (RenderedPost, rPostAuthor, rPostContent, rPostDate, rPostHasTags, rPostId, rPostIsoDate, rPostLink, rPostSummary, rPostTags, rPostTitle))
 import Utilities
+
+extend_with_lambda :: Mus.Object -> (Text, (Text -> Text)) -> Mus.Value
+extend_with_lambda obj (key, val) = Mus.Object $ insert key (Mus.overText val) obj
 
 applyTemplate :: (HasCallStack, (ToMustache a)) => String -> a -> Action Text
 applyTemplate templateName context = do

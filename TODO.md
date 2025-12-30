@@ -3,6 +3,7 @@
         - https://github.com/wereHamster/haskell-css-syntax
     - JS
         - Doing our own tokenizer lol
+- [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
 - [ ] setup fingerprinting in file names for css and js
     - setup lambdas via: https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
     - This may require a refactor of how we handle templates to use `object` instead of just using aeson integration from the mustache crate
