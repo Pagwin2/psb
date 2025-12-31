@@ -17,7 +17,7 @@ import Data.Void (Void)
 import Logger
 import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, Stream (tokensToChunk), anySingle, choice, parse)
 import qualified Text.Megaparsec as MP
-import Text.Megaparsec.Char (char, digitChar, hspace, letterChar, newline, string)
+import Text.Megaparsec.Char (char, digitChar, eol, hspace, letterChar, newline, string)
 import Utilities.Parsing
 
 minify :: (Characters s) => [Token s] -> [Token s]
@@ -275,7 +275,7 @@ private_identifier =
     *> identifier
     <&> \(Identifier i) -> PrivateIdentifier i
 
-literal :: (Logger m, Characters s) => Parser s m (Token s)
+literal :: forall s m. (Logger m, Characters s) => Parser s m (Token s)
 literal =
   Literal
     <$> ( choice
@@ -285,7 +285,34 @@ literal =
             ]
         )
   where
-    template_fragment = TemplateFragment <$> error "TODO"
+    template_fragment :: Parser s m (Literal s)
+    template_fragment = TemplateFragment <$> (choice [try head_temp_frag, try mid_temp_frag, try tail_temp_frag, no_sub_temp_frag])
+    no_sub_temp_frag = do
+      char '`'
+      contents <- many template_char
+      char '`'
+      pure $ NoSub $ mconcat contents
+    head_temp_frag = do
+      char '`'
+      contents <- many template_char
+      string "${"
+      pure $ TemplateHead contents
+    mid_temp_frag = do
+      char '}'
+      contents <- many template_char
+      string "${"
+      pure $ TemplateMiddle contents
+    tail_temp_frag = do
+      char '}'
+      contents <- many template_char
+      char '`'
+      pure $ TemplateTail contents
+    template_char :: Parser s m [Char]
+    -- TODO: I fucked something up here
+    template_char = choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> eol), source_char]
+    source_char = error "TODO"
+    template_escape_seq = error "TODO: TemplateEscapeSequence, prepend backslash"
+    not_escape_seq = error "TODO: NotEscapeSequence, prepend backslash"
     string_lit = String <$> error "TODO"
     num_lit = Number <$> (choice [try decimal_literal, try decimal_bigint, try plain_bigint, try normal_integer, octal_int])
     decimal_literal = error "TODO"
