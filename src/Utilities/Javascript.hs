@@ -9,16 +9,22 @@ module Utilities.Javascript
 where
 
 import Control.Applicative (Alternative (many), optional, (<|>))
+import Control.Monad.Trans.Class (MonadTrans (lift))
+import Control.Monad.Trans.State (StateT, evalStateT, put)
 import Data.Data (Proxy (Proxy))
 import Data.Functor ((<&>))
 import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
 import Data.Void (Void)
 import Logger
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, Stream (tokensToChunk), anySingle, choice, parse)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, choice, parse, runParserT)
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (char, digitChar, eol, hspace, letterChar, newline, string)
-import Utilities.Parsing
+import Utilities.Parsing (Characters, ToText (fromText, toString, toText))
+
+data Possibility = ExprAllowed | ExprNotAllowed deriving (Eq)
+
+type Parser s m = ParsecT Void s (StateT Possibility m)
 
 minify :: (Characters s) => [Token s] -> [Token s]
 minify = reduce_identifiers . remove_redundants
@@ -32,8 +38,8 @@ minify = reduce_identifiers . remove_redundants
       WhiteSpace -> False
       _ -> True
 
-toTokens :: (Characters s) => String -> s -> Either (ParseErrorBundle s Void) [Token s]
-toTokens = parse tokens
+toTokens :: (Characters s, Logger m) => String -> s -> m (Either (ParseErrorBundle s Void) [Token s])
+toTokens src stream = evalStateT (runParserT tokens src stream) ExprAllowed
 
 displayToken :: (ToText s) => Token s -> s
 displayToken WhiteSpace = fromText " "
@@ -90,7 +96,7 @@ displayReserved Yield = fromText "yield"
 displayLiteral :: (ToText s) => Literal s -> s
 displayLiteral (Number num) = num
 displayLiteral (String s) = fromText $ "\"" <> toText s <> "\""
-displayLiteral (Regex s) = fromText $ "/" <> toText s <> "/"
+displayLiteral (Regex {body, flags}) = fromText $ "/" <> toText body <> "/" <> toText flags
 displayLiteral (TemplateFragment frag) = displayTemplateFrag frag
 
 displayTemplateFrag :: (ToText s) => TemplateFragment s -> s
@@ -173,7 +179,7 @@ data Token s
 
 data Reserved = Await | Break | Case | Catch | Class | Const | Continue | Debugger | Default | Delete | Do | Else | Enum | Export | Extends | FalseVal | Finally | For | Function | If | Import | In | Instanceof | New | Null | Return | Super | Switch | This | Throw | TrueVal | Try | Typeof | Var | Void | While | With | Yield deriving (Eq)
 
-data Literal s = Number s | String s | Regex s | TemplateFragment (TemplateFragment s) deriving (Eq)
+data Literal s = Number s | String s | Regex {body :: s, flags :: s} | TemplateFragment (TemplateFragment s) deriving (Eq)
 
 data TemplateFragment s = NoSub s | TemplateHead s | TemplateMiddle s | TemplateTail s deriving (Eq)
 
@@ -185,17 +191,37 @@ tokens = do
   tokens <- many token
   pure $ (maybeToList hashbang) ++ tokens
 
+exprAllowed :: (Stream s, Monad m) => Parser s m ()
+exprAllowed = lift $ put ExprAllowed
+
+exprNotAllowed :: (Stream s, Monad m) => Parser s m ()
+exprNotAllowed = lift $ put ExprNotAllowed
+
+exprNoop :: (Stream s, Monad m) => String -> Parser s m ()
+-- string arg is just as a comment
+exprNoop _ = pure ()
+
+-- TODO: read https://github.com/jquery/esprima/blob/main/src/scanner.ts
+-- and https://github.com/acornjs/acorn/blob/master/acorn/src/tokenize.js
+-- specific logic at https://github.com/acornjs/acorn/blob/54097dcf8c08733695df7168692d0faac3a2f768/acorn/src/tokencontext.js#L92
+-- https://astexplorer.net/
 token :: (Logger m, Characters s) => Parser s m (Token s)
 token =
   choice
-    [ try comment,
-      try reserved_word,
-      try identifier,
-      try private_identifier,
-      try literal,
-      try punctuator,
-      try linebreak,
-      whitespace
+    [ try comment
+        <* exprNoop "comments don't change whether an expression is allowed or not",
+      try reserved_word
+        <* exprNoop "each reserved word can be different so it needs to be handled in there",
+      -- discovered when I realized yield can be an identifier and doesn't let you get away with nonsense
+      try identifier <* exprNotAllowed,
+      -- Assuming it's the same as identifier
+      try private_identifier <* exprNotAllowed,
+      -- briefly was concerned about {} but then realized that isn't a literal
+      try literal <* exprNotAllowed,
+      -- handled on a case by case basis
+      try punctuator <* error "TODO",
+      try linebreak <* exprNoop "technically wrong due to semicolon insertion but hopefully that never comes up usage for this",
+      whitespace <* exprNoop "non linebreak whitespace doesn't change whether an expression is allowed or not, same as comments"
     ]
 
 hashbang_comment :: (Logger m, Characters s) => Parser s m (Token s)
@@ -217,7 +243,47 @@ comment = (try singleline_com) <|> multiline_com
       pure $ MultiLineComment $ fromString text
 
 reserved_word :: (Logger m, Characters s) => Parser s m (Token s)
-reserved_word = choice [try await, try break, try case_, try catch_, try class_, try const, try continue, try debugger, try default_, try delete, try do_, try else_, try enum, try export, try extends, try false, try finally_, try for_, try function, try if_, try import_, try in_, try instanceof, try new, try null, try return, try super, try switch, try this, try throw_, try true, try try_, try typeof, try var, try void, try while, try with, yield]
+reserved_word =
+  choice
+    [ try await <* exprAllowed,
+      try break <* error "TODO exprAllowed",
+      try case_ <* exprAllowed,
+      try catch_ <* error "TODO exprAllowed",
+      try class_ <* error "TODO exprAllowed",
+      try const <* error "TODO exprAllowed",
+      try continue <* error "TODO exprAllowed",
+      try debugger <* error "TODO exprAllowed",
+      try default_ <* error "TODO exprAllowed",
+      try delete <* exprAllowed,
+      try do_ <* error "TODO exprAllowed",
+      try else_ <* error "TODO exprAllowed",
+      try enum <* error "TODO exprAllowed",
+      try export <* error "TODO exprAllowed",
+      try extends <* error "TODO exprAllowed",
+      try false <* exprNotAllowed,
+      try finally_ <* error "TODO exprAllowed",
+      try for_ <* error "TODO exprAllowed",
+      try function <* error "TODO exprAllowed",
+      try if_ <* error "TODO exprAllowed",
+      try import_ <* error "TODO exprAllowed",
+      try in_ <* exprAllowed,
+      try instanceof <* exprAllowed,
+      try new <* error "TODO exprAllowed",
+      try null <* error "TODO exprAllowed",
+      try return <* exprAllowed,
+      try super <* error "TODO exprAllowed",
+      try switch <* error "TODO exprAllowed",
+      try this <* error "TODO exprAllowed",
+      try throw_ <* exprAllowed,
+      try true <* exprNotAllowed,
+      try try_ <* error "TODO exprAllowed",
+      try typeof <* exprAllowed,
+      try var <* exprNotAllowed,
+      try void <* error "TODO exprAllowed",
+      try while <* error "TODO exprAllowed",
+      try with <* error "TODO exprAllowed",
+      yield <* exprNotAllowed
+    ]
   where
     await = string "await" *> pure (ReservedWord Await)
     break = string "break" *> pure (ReservedWord Break)
@@ -384,7 +450,7 @@ punctuator =
         )
 
 linebreak :: (Logger m, Characters s) => Parser s m (Token s)
-linebreak = newline *> pure WhiteSpace
+linebreak = newline *> pure LineTerminator
 
 whitespace :: (Logger m, Characters s) => Parser s m (Token s)
 whitespace = hspace *> pure WhiteSpace

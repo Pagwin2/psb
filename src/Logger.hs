@@ -27,24 +27,6 @@ instance Logger IO where
   logInfo = logIO "info"
   logDebug = logIO "debug"
 
-logState :: (Monad m) => T.Text -> StateT T.Text m ()
-logState msg = modify (<> msg <> "\n")
-
-instance {-# OVERLAPPING #-} (Monad m) => Logger (StateT T.Text m) where
-  logError = logState
-  logWarning = logState
-  logInfo = logState
-  logDebug = logState
-
-logStateStr :: (Monad m) => T.Text -> StateT String m ()
-logStateStr msg = modify (<> T.unpack msg <> "\n")
-
-instance {-# OVERLAPPING #-} (Monad m) => Logger (StateT String m) where
-  logError = logStateStr
-  logWarning = logStateStr
-  logInfo = logStateStr
-  logDebug = logStateStr
-
 instance {-# OVERLAPPING #-} (Monad m) => Logger (WriterT T.Text m) where
   logError = tell . (<> "\n")
   logWarning = tell . (<> "\n")
