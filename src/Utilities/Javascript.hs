@@ -291,25 +291,25 @@ literal =
       char '`'
       contents <- many template_char
       char '`'
-      pure $ NoSub $ mconcat contents
+      pure $ NoSub $ fromText $ mconcat $ map toText $ contents
+    head_temp_frag :: Parser s m (TemplateFragment s)
     head_temp_frag = do
       char '`'
       contents <- many template_char
       string "${"
-      pure $ TemplateHead contents
+      pure $ TemplateHead $ fromText $ mconcat $ map toText $ contents
     mid_temp_frag = do
       char '}'
       contents <- many template_char
       string "${"
-      pure $ TemplateMiddle contents
+      pure $ TemplateMiddle $ fromText $ mconcat $ map toText $ contents
     tail_temp_frag = do
       char '}'
       contents <- many template_char
       char '`'
-      pure $ TemplateTail contents
-    template_char :: Parser s m [Char]
-    -- TODO: I fucked something up here
-    template_char = choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> eol), source_char]
+      pure $ TemplateTail $ fromText $ mconcat $ map toText $ contents
+    template_char :: Parser s m s
+    template_char = fromText . toText <$> choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> (eol)), source_char]
     source_char = error "TODO"
     template_escape_seq = error "TODO: TemplateEscapeSequence, prepend backslash"
     not_escape_seq = error "TODO: NotEscapeSequence, prepend backslash"
