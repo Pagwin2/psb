@@ -4,6 +4,7 @@
     - JS
         - Doing our own tokenizer lol
 - [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
+- [ ] Fix timestamp(s) shown to use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 - [ ] setup fingerprinting in file names for css and js
     - setup lambdas via: https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
     - This may require a refactor of how we handle templates to use `object` instead of just using aeson integration from the mustache crate
@@ -18,6 +19,7 @@
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
     - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
+- [ ] setup font subsetting (font file minimization)
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
     - https://hackage.haskell.org/package/file-embed
