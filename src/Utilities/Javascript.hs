@@ -12,7 +12,7 @@ import Control.Applicative (Alternative (many), optional, (<|>))
 import Control.Monad.Trans.Class (MonadTrans (lift))
 import Control.Monad.Trans.State (StateT, evalStateT, put)
 import Data.Data (Proxy (Proxy))
-import Data.Functor ((<&>))
+import Data.Functor (void, (<&>))
 import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
 import Data.Void (Void)
@@ -20,7 +20,7 @@ import Logger
 import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, choice, parse, runParserT)
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (char, digitChar, eol, hspace, letterChar, newline, string)
-import Utilities.Parsing (Characters, ToText (fromText, toString, toText))
+import Utilities.Parsing (Characters, ToChar (fromChar), ToText (fromText, toString, toText))
 
 data Possibility = ExprAllowed | ExprNotAllowed deriving (Eq)
 
@@ -375,7 +375,7 @@ literal =
       char '`'
       pure $ TemplateTail $ fromText $ mconcat $ map toText $ contents
     template_char :: Parser s m s
-    template_char = fromText . toText <$> choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> (eol)), source_char]
+    template_char = fromText . toText <$> choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> (eol)), (notFollowedBy (choice $ linebreak : (map (fromChar <$> char) "`\\$"))) *> source_char]
     source_char = error "TODO"
     template_escape_seq = error "TODO: TemplateEscapeSequence, prepend backslash"
     not_escape_seq = error "TODO: NotEscapeSequence, prepend backslash"

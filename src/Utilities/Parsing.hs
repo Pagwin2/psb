@@ -19,9 +19,11 @@ class ToText t where
 
 class ToChar c where
   toChar :: c -> Char
+  fromChar :: Char -> c
 
 instance ToChar Char where
   toChar = id
+  fromChar = id
 
 instance Characters Text
 
