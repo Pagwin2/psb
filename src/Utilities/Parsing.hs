@@ -10,7 +10,7 @@ import Text.Megaparsec (ParsecT, Stream, Token, Tokens)
 
 type Parser = ParsecT Void
 
-class (Token s ~ Char, Stream s, ToText (Tokens s), ToText s, IsString (Tokens s), IsString s, Monoid (Tokens s), ToChar (Token s), Eq (Tokens s), Show s) => Characters s
+class (Token s ~ Char, Stream s, ToText (Tokens s), ToText s, IsString (Tokens s), IsString s, Monoid (Tokens s), ToChar (Token s), Eq (Tokens s), Show s, Monoid s) => Characters s
 
 class ToText t where
   toText :: t -> Text

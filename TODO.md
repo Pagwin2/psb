@@ -4,7 +4,6 @@
     - JS
         - Doing our own tokenizer lol
 - [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
-- [ ] Fix timestamp(s) shown to use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 - [ ] setup fingerprinting in file names for css and js
     - setup lambdas via: https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
     - This may require a refactor of how we handle templates to use `object` instead of just using aeson integration from the mustache crate
@@ -27,4 +26,5 @@
 - [ ] Make a function which takes IR and spits out some kind of table of contents
 - [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
     - [ ] Add in functionality for footnotes
+- [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 -  [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing

@@ -3,31 +3,38 @@
 
 module Utilities.Javascript
   ( minify,
+    minifyTokens,
     toTokens,
     displayToken,
   )
 where
 
-import Control.Applicative (Alternative (many), optional, (<|>))
+import Control.Applicative (Alternative (many, some), empty, optional, (<|>))
 import Control.Monad.Trans.Class (MonadTrans (lift))
-import Control.Monad.Trans.State (StateT, evalStateT, put)
+import Control.Monad.Trans.State (StateT, evalStateT, get, put)
 import Data.Data (Proxy (Proxy))
 import Data.Functor (void, (<&>))
+import Data.Functor.Identity (Identity (Identity, runIdentity))
 import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
 import Data.Void (Void)
 import Logger
 import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, choice, parse, runParserT)
 import qualified Text.Megaparsec as MP
-import Text.Megaparsec.Char (char, digitChar, eol, hspace, letterChar, newline, string)
+import Text.Megaparsec.Char (binDigitChar, char, digitChar, eol, hexDigitChar, hspace, letterChar, newline, octDigitChar, string)
 import Utilities.Parsing (Characters, ToChar (fromChar), ToText (fromText, toString, toText))
 
 data Possibility = ExprAllowed | ExprNotAllowed deriving (Eq)
 
 type Parser s m = ParsecT Void s (StateT Possibility m)
 
-minify :: (Characters s) => [Token s] -> [Token s]
-minify = reduce_identifiers . remove_redundants
+minify :: forall s. (Characters s, MP.VisualStream s, MP.TraversableStream s) => s -> s
+minify src = foldMap displayToken $ minifyTokens $ case runIdentity ((toTokens "" src) :: Identity (Either (ParseErrorBundle s Void) [Token s])) of
+  Left e -> error $ "Attempt to tokenize javascript file failed with: " <> MP.errorBundlePretty e
+  Right v -> v
+
+minifyTokens :: (Characters s) => [Token s] -> [Token s]
+minifyTokens = reduce_identifiers . remove_redundants
   where
     -- need to figure out how to add State into this
     reduce_identifiers = map $ \token -> case token of
@@ -201,10 +208,11 @@ exprNoop :: (Stream s, Monad m) => String -> Parser s m ()
 -- string arg is just as a comment
 exprNoop _ = pure ()
 
--- TODO: read https://github.com/jquery/esprima/blob/main/src/scanner.ts
+-- INFO: read https://github.com/jquery/esprima/blob/main/src/scanner.ts
 -- and https://github.com/acornjs/acorn/blob/master/acorn/src/tokenize.js
 -- specific logic at https://github.com/acornjs/acorn/blob/54097dcf8c08733695df7168692d0faac3a2f768/acorn/src/tokencontext.js#L92
 -- https://astexplorer.net/
+-- atm this is guesswork
 token :: (Logger m, Characters s) => Parser s m (Token s)
 token =
   choice
@@ -335,7 +343,7 @@ identifier = do
     rem_char :: Parser s m (MP.Token s)
     rem_char = start_char <|> digitChar
 
-private_identifier :: (Logger m, Characters s) => Parser s m (Token s)
+private_identifier :: forall s m. (Logger m, Characters s) => Parser s m (Token s)
 private_identifier =
   char '#'
     *> identifier
@@ -375,20 +383,55 @@ literal =
       char '`'
       pure $ TemplateTail $ fromText $ mconcat $ map toText $ contents
     template_char :: Parser s m s
-    template_char = fromText . toText <$> choice [try (string "$" <* (notFollowedBy $ char '{')), try (char '\\' *> ((try template_escape_seq) <|> not_escape_seq)), try ((optional $ char '\\') *> (eol)), (notFollowedBy (choice $ linebreak : (map (fromChar <$> char) "`\\$"))) *> source_char]
-    source_char = error "TODO"
-    template_escape_seq = error "TODO: TemplateEscapeSequence, prepend backslash"
-    not_escape_seq = error "TODO: NotEscapeSequence, prepend backslash"
+    template_char =
+      fromText . toText
+        <$> choice
+          [ try (string "$" <* (notFollowedBy $ char '{')),
+            try escape_seq,
+            try ((optional $ char '\\') *> (eol)),
+            -- I'm sure this is doable without do but do makes it much easier
+            do
+              notFollowedBy (choice [void linebreak, void $ char '`', void $ char '\\', void $ char '$'])
+              c <- source_char
+              pure $ fromString $ c : []
+          ]
+    source_char = anySingle
+    escape_seq = do
+      char '\\'
+      ret <- anySingle
+      pure $ fromString ('\\' : [ret])
+    num_lit = Number <$> (choice [try legacy_oct, try decimal_bigint, try decimal_literal, try hex_int, try oct_int, try bin_int, zero])
+    zero = char '0' *> pure "0"
+    decimal_literal = fromString <$> some (digitChar <|> char '_')
+    decimal_bigint = do
+      most <- decimal_literal
+      char 'n'
+      pure $ fromText $ toText most <> "n"
+    legacy_oct = char '0' *> (fromString <$> some (octDigitChar <|> char '_'))
+    oct_int = char '0' *> (char 'o' <|> char 'O') *> (fromString <$> some (octDigitChar <|> char '_'))
+    hex_int = char '0' *> (char 'x' <|> char 'X') *> (fromString <$> some (hexDigitChar <|> char '_'))
+    bin_int = char '0' *> (char 'b' <|> char 'B') *> (fromString <$> some (binDigitChar <|> char '_'))
     string_lit = String <$> error "TODO"
-    num_lit = Number <$> (choice [try decimal_literal, try decimal_bigint, try plain_bigint, try normal_integer, octal_int])
-    decimal_literal = error "TODO"
-    decimal_bigint = error "TODO"
-    plain_bigint = error "TODO"
-    normal_integer = error "TODO"
-    octal_int = error "TODO"
 
-fslash_handler :: (Logger m, Characters s) => Parser s m (Token s)
-fslash_handler = error "TODO: Regex literal, division and division assignment"
+fslash_handler :: forall s m. (Logger m, Characters s) => Parser s m (Token s)
+fslash_handler = do
+  allowed <- lift $ get
+  let re = case allowed of
+        ExprNotAllowed -> empty
+        ExprAllowed -> regex_literal
+
+  choice [try re, try division_assign, division]
+  where
+    regex_literal :: Parser s m (Token s)
+    regex_literal = do
+      char '/'
+      error "TODO"
+      pure $ Literal $ Regex {}
+    division_assign :: Parser s m (Token s)
+    division_assign = (string "/=") *> (pure $ Punc $ DivAssign :: Parser s m (Token s))
+
+    division :: Parser s m (Token s)
+    division = char '/' *> (pure $ Punc $ Div :: Parser s m (Token s))
 
 punctuator :: (Logger m, Characters s) => Parser s m (Token s)
 punctuator =
@@ -405,8 +448,10 @@ punctuator =
               try $ string "&&=" *> pure LogicalAndAssign <* exprAllowed,
               try $ string "||=" *> pure LogicalOrAssign <* exprAllowed,
               try $ string "??=" *> pure NullishAssign <* exprAllowed,
-              try $ string "++" *> pure Inc <* error "TODO: Ambiguous precrement vs postcrement",
-              try $ string "--" *> pure Dec <* error "TODO: Ambiguous precrement postcrement",
+              -- best effort guess based on my usage that it'll always be postcrement
+              -- Shouldn't come up in my use case though
+              try $ string "++" *> pure Inc <* exprNotAllowed,
+              try $ string "--" *> pure Dec <* exprNotAllowed,
               try $ string "?." *> (notFollowedBy digitChar) *> pure OptionalChain <* exprNotAllowed,
               try $ string "**" *> pure Exp <* exprAllowed,
               try $ string "<=" *> pure LTEQ <* exprAllowed,
@@ -439,11 +484,12 @@ punctuator =
               char ';' *> pure Semicolon <* exprAllowed,
               char ',' *> pure Comma <* exprAllowed,
               char '!' *> pure LogicalNot <* exprAllowed,
-              -- HERE
-              char '(' *> pure LParen <* exprNotAllowed,
+              -- Note: parens and curlies are unambiguously ambiguous
+              -- Opening ones will generally allow an expression and closing ones will generally not allow an expression
+              char '(' *> pure LParen <* exprAllowed,
               char ')' *> pure RParen <* exprNotAllowed,
-              char '{' *> pure LCurly <* error "TODO: Ambiguous",
-              char '}' *> pure RCurly <* error "TODO: Ambiguous",
+              char '{' *> pure LCurly <* exprAllowed,
+              char '}' *> pure RCurly <* exprNotAllowed,
               char '[' *> pure LSquare <* exprNotAllowed,
               char ']' *> pure RSquare <* exprNotAllowed,
               char '.' *> pure Dot <* exprNotAllowed

@@ -97,13 +97,8 @@ js_resources =
   map (outputDir </>) jsGlobs |%> \target -> do
     let src_file = FP.dropDirectory1 target
     src <- Shake.readFile' $ src_file
-
-    let tokenization = JS.toTokens src_file src
-    case tokenization of
-      Left e -> error $ "Attempt to tokenize javascript file failed with: " <> errorBundlePretty e
-      Right tokens ->
-        -- TODO: write to fingerprinted location as well
-        Shake.writeFileChanged target $ foldMap JS.displayToken $ JS.minify $ tokens
+    -- TODO: write to fingerprinted location as well
+    Shake.writeFileChanged target $ JS.minify src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
 postsRule :: Rules ()
