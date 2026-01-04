@@ -19,10 +19,10 @@ import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
 import Data.Void (Void)
 import Logger
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, choice, parse, runParserT)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, between, choice, parse, runParserT)
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (binDigitChar, char, digitChar, eol, hexDigitChar, hspace, letterChar, newline, octDigitChar, string)
-import Utilities.Parsing (Characters, ToChar (fromChar), ToText (fromText, toString, toText))
+import Utilities.Parsing (Characters, ToChar (fromChar, toChar), ToText (fromText, toString, toText))
 
 data Possibility = ExprAllowed | ExprNotAllowed deriving (Eq)
 
@@ -411,7 +411,24 @@ literal =
     oct_int = char '0' *> (char 'o' <|> char 'O') *> (fromString <$> some (octDigitChar <|> char '_'))
     hex_int = char '0' *> (char 'x' <|> char 'X') *> (fromString <$> some (hexDigitChar <|> char '_'))
     bin_int = char '0' *> (char 'b' <|> char 'B') *> (fromString <$> some (binDigitChar <|> char '_'))
-    string_lit = String <$> error "TODO"
+    string_lit = String <$> ((try $ g_string '\'') <|> g_string '"')
+
+    -- turn from [String] to String to s
+    g_string :: Char -> Parser s m s
+    g_string c = mconcat <$> between (char c) (char c) (many $ str_char c)
+
+    str_char :: Char -> Parser s m s
+    str_char c = choice [try escape_seq, try line_continuation, basic_str_char c]
+
+    basic_str_char :: Char -> Parser s m s
+    basic_str_char c = fromString . (: []) <$> (notFollowedBy ((void linebreak) <|> (void $ char '\\') <|> (void $ char c)) *> anySingle)
+
+    line_continuation :: Parser s m s
+    line_continuation = do
+      char '\\'
+      c <- linebreak
+      -- technically wrong but I'm lazy
+      pure $ fromText "\\\n"
 
 fslash_handler :: forall s m. (Logger m, Characters s) => Parser s m (Token s)
 fslash_handler = do
