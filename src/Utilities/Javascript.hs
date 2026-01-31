@@ -384,17 +384,16 @@ literal =
       pure $ TemplateTail $ fromText $ mconcat $ map toText $ contents
     template_char :: Parser s m s
     template_char =
-      fromText . toText
-        <$> choice
-          [ try (string "$" <* (notFollowedBy $ char '{')),
-            try escape_seq,
-            try ((optional $ char '\\') *> (eol)),
-            -- I'm sure this is doable without do but do makes it much easier
-            do
-              notFollowedBy (choice [void linebreak, void $ char '`', void $ char '\\', void $ char '$'])
-              c <- source_char
-              pure $ fromString $ c : []
-          ]
+      choice
+        [ try ((fromText . toText <$> string "$") <* (notFollowedBy $ char '{')),
+          try escape_seq,
+          try (fromText . toText <$> ((optional $ char '\\') *> (eol))),
+          -- I'm sure this is doable without do but do makes it much easier
+          do
+            notFollowedBy (choice [void linebreak, void $ char '`', void $ char '\\', void $ char '$'])
+            c <- source_char
+            pure $ fromString $ c : []
+        ]
     source_char = anySingle
     escape_seq = do
       char '\\'
@@ -446,13 +445,13 @@ fslash_handler = do
       rem_chars <- many reg_rem_char
       let body = fromString (first_char : rem_chars)
       char '/'
-      flags <- fromString $ tokensToChunk (Proxy :: Proxy s) <$> many letterChar
+      flags <- fromString <$> many letterChar
       pure $ Literal $ Regex {body, flags}
     reg_first_char :: Parser s m Char
     -- ecmascript specification name lied to me, it can be more than one char >:(
     -- to clarify this is technically wrong but I don't care because I don't want to rewrite
     -- other code due to ecmascript standard using bad names
-    reg_first_char = noneOf "*/"
+    reg_first_char = noneOf ['*', '/']
     reg_rem_char :: Parser s m Char
     reg_rem_char = anySingleBut '/'
     division_assign :: Parser s m (Token s)
