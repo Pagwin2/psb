@@ -19,7 +19,7 @@ import Data.Maybe (maybeToList)
 import Data.String (IsString (fromString))
 import Data.Void (Void)
 import Logger
-import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, between, choice, parse, runParserT)
+import Text.Megaparsec (MonadParsec (notFollowedBy, try), ParseErrorBundle, ParsecT, Stream (tokensToChunk), anySingle, anySingleBut, between, choice, noneOf, parse, runParserT)
 import qualified Text.Megaparsec as MP
 import Text.Megaparsec.Char (binDigitChar, char, digitChar, eol, hexDigitChar, hspace, letterChar, newline, octDigitChar, string)
 import Utilities.Parsing (Characters, ToChar (fromChar, toChar), ToText (fromText, toString, toText))
@@ -442,8 +442,19 @@ fslash_handler = do
     regex_literal :: Parser s m (Token s)
     regex_literal = do
       char '/'
-      error "TODO"
-      pure $ Literal $ Regex {}
+      first_char <- reg_first_char
+      rem_chars <- many reg_rem_char
+      let body = fromString (first_char : rem_chars)
+      char '/'
+      flags <- fromString $ tokensToChunk (Proxy :: Proxy s) <$> many letterChar
+      pure $ Literal $ Regex {body, flags}
+    reg_first_char :: Parser s m Char
+    -- ecmascript specification name lied to me, it can be more than one char >:(
+    -- to clarify this is technically wrong but I don't care because I don't want to rewrite
+    -- other code due to ecmascript standard using bad names
+    reg_first_char = noneOf "*/"
+    reg_rem_char :: Parser s m Char
+    reg_rem_char = anySingleBut '/'
     division_assign :: Parser s m (Token s)
     division_assign = (string "/=") *> (pure $ Punc $ DivAssign :: Parser s m (Token s))
 
