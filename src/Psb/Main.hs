@@ -26,6 +26,7 @@ import Text.Megaparsec (errorBundlePretty)
 import Text.Mustache (ToMustache (toMustache))
 import Types
 import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
+import Utilities.Bundling (bundled)
 import qualified Utilities.CSS as CSS
 import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
 import qualified Utilities.Javascript as JS
@@ -73,10 +74,12 @@ buildRules :: Rules ()
 buildRules = do
   home
   assets
+  bundled
   postsRule
   rss
-  css_resources
-  js_resources
+
+-- css_resources
+-- js_resources
 
 -- make a rule of the pattern outputDir/asset_name which copes from outputDir/../pages
 assets :: Rules ()
@@ -85,20 +88,20 @@ assets =
     let src = FP.dropDirectory1 target
     Shake.copyFileChanged src target
 
-css_resources :: Rules ()
-css_resources =
-  map (outputDir </>) cssGlobs |%> \target -> do
-    src <- Shake.readFile' $ FP.dropDirectory1 target
-    -- TODO: write to fingerprinted location as well
-    Shake.writeFileChanged target $ CSS.minify src
-
-js_resources :: Rules ()
-js_resources =
-  map (outputDir </>) jsGlobs |%> \target -> do
-    let src_file = FP.dropDirectory1 target
-    src <- Shake.readFile' $ src_file
-    -- TODO: write to fingerprinted location as well
-    Shake.writeFileChanged target $ JS.minify src
+-- css_resources :: Rules ()
+-- css_resources =
+--  map (outputDir </>) cssGlobs |%> \target -> do
+--    src <- Shake.readFile' $ FP.dropDirectory1 target
+--    -- TODO: write to fingerprinted location as well
+--    Shake.writeFileChanged target $ CSS.minify src
+--
+-- js_resources :: Rules ()
+-- js_resources =
+--  map (outputDir </>) jsGlobs |%> \target -> do
+--    let src_file = FP.dropDirectory1 target
+--    src <- Shake.readFile' $ src_file
+--    -- TODO: write to fingerprinted location as well
+--    Shake.writeFileChanged target $ JS.minify src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
 postsRule :: Rules ()
