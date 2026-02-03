@@ -58,7 +58,8 @@ buildSite = do
   Shake.need $ map (outputDir </>) assetPaths
 
   -- handle js, css and anything else we want to process before moving
-  Shake.need <$> Shake.getDirectoryFiles "" resourceGlobs
+  resourcePaths <- Shake.getDirectoryFiles "resources/" resourceGlobs
+  Shake.need $ map resourceHashPath resourcePaths
 
   -- take the misc pages which aren't blog posts and make their html files
   Shake.need $ map indexHtmlOutputPath pagePaths

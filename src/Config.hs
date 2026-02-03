@@ -1,7 +1,13 @@
 module Config where
 
-outputDir :: String
+import Development.Shake.FilePath (addExtension, (</>))
+
+outputDir :: FilePath
 outputDir = "publish"
+
+-- build artifacts go here
+buildDir :: FilePath
+buildDir = ".psb"
 
 assetGlobs :: [String]
 assetGlobs = ["static//*", "robots.txt", "favicon.ico"]
@@ -12,6 +18,9 @@ resourceGlobs = jsGlobs ++ cssGlobs
 
 prependResources :: (Functor m) => m String -> m String
 prependResources = fmap ("resources/" ++)
+
+resourceHashPath :: FilePath -> FilePath
+resourceHashPath input = outputDir </> addExtension input ".hash"
 
 jsGlobs :: [String]
 jsGlobs = prependResources $ liftA2 (++) ["js//*."] ["js", "mjs"]
