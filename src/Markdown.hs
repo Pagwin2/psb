@@ -66,7 +66,6 @@ inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow
 
     strikethrough disallow = Crossed <$> (between' disallow (string "~~") (void $ string "~~") (inlineText' (disallow <|> (void $ string "~~"))))
 
-    -- TODO: bold and italic eat a lineEnding that they shouldn't for some reason
     bold disallow = Bold <$> (between' disallow (string "**") (disallow <|> (void $ string "**")) (inlineText' (disallow <|> (void $ string "**"))))
 
     italic :: (HasCallStack) => Parser s m () -> Parser s m InlineText

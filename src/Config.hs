@@ -12,7 +12,7 @@ buildDir = ".psb"
 assetGlobs :: [String]
 assetGlobs = ["static//*", "robots.txt", "favicon.ico"]
 
--- this insanity is to avoid repetition
+-- this used to be useful but does nothing now
 resourceGlobs :: [String]
 resourceGlobs = jsGlobs ++ cssGlobs
 
@@ -23,10 +23,10 @@ resourceHashPath :: FilePath -> FilePath
 resourceHashPath input = outputDir </> addExtension input ".hash"
 
 jsGlobs :: [String]
-jsGlobs = prependResources $ liftA2 (++) ["js//*."] ["js", "mjs"]
+jsGlobs = prependResources $ ["js/entry.mjs"] -- prependResources $ liftA2 (++) ["js//*."] ["js", "mjs"]
 
 cssGlobs :: [String]
-cssGlobs = prependResources $ liftA2 (++) ["css//*."] ["css"]
+cssGlobs = prependResources $ ["css/entry.css"] -- prependResources $ liftA2 (++) ["css//*."] ["css"]
 
 -- CAN ONLY BE TYPST DOCS UNLESS YOU CHANGE THINGS AT THE `pages` RULE in `Main.hs
 pagePaths :: [String]

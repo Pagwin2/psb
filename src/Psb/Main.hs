@@ -75,9 +75,10 @@ buildRules :: Rules ()
 buildRules = do
   home
   assets
-  bundled
   postsRule
   rss
+  bundled
+  pure ()
 
 -- css_resources
 -- js_resources
@@ -93,7 +94,6 @@ assets =
 -- css_resources =
 --  map (outputDir </>) cssGlobs |%> \target -> do
 --    src <- Shake.readFile' $ FP.dropDirectory1 target
---    -- TODO: write to fingerprinted location as well
 --    Shake.writeFileChanged target $ CSS.minify src
 --
 -- js_resources :: Rules ()
@@ -101,7 +101,6 @@ assets =
 --  map (outputDir </>) jsGlobs |%> \target -> do
 --    let src_file = FP.dropDirectory1 target
 --    src <- Shake.readFile' $ src_file
---    -- TODO: write to fingerprinted location as well
 --    Shake.writeFileChanged target $ JS.minify src
 
 -- there's probably a better way of doing this that allows for the target's origin file extension to get passed in but for now we're doing brute force
