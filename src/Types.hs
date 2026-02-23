@@ -12,8 +12,10 @@ data Page = Page
     pageContent :: Text,
     -- build time
     pageNow :: Text,
-    --
-    pageUrl :: Text
+    pageUrl :: Text,
+    -- from Bundles
+    pageBundleCss :: [Text],
+    pageBundleJs :: [Text]
   }
   deriving (Show, Generic)
   deriving (ToJSON) via PrefixedSnake "page" Page

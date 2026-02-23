@@ -26,7 +26,7 @@ import Text.Megaparsec (errorBundlePretty)
 import Text.Mustache (ToMustache (toMustache))
 import Types
 import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
-import Utilities.Bundling (bundled)
+import Utilities.Bundling (BuildOracleVariant (CSS, Javascript), bundled)
 import qualified Utilities.CSS as CSS
 import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
 import qualified Utilities.Javascript as JS
@@ -78,7 +78,6 @@ buildRules = do
   postsRule
   rss
   bundled
-  pure ()
 
 -- css_resources
 -- js_resources
@@ -130,6 +129,8 @@ markdownPost src = do
   post <- readMarkdownPost src
   let rPost = fromPost post
   postHtml <- applyTemplate "post.html" rPost
+  css_bundle <- Shake.askOracle CSS
+  js_bundle <- Shake.askOracle Javascript
 
   time <- Utilities.Action.now
   -- Shake.putInfo $ T.unpack $ urlConvert target
@@ -138,7 +139,9 @@ markdownPost src = do
           { pageTitle = rPostTitle rPost,
             pageContent = postHtml,
             pageNow = time,
-            pageUrl = urlConvert target
+            pageUrl = urlConvert target,
+            pageBundleCss = map T.pack css_bundle,
+            pageBundleJs = map T.pack js_bundle
           }
   applyTemplateAndWrite "default.html" page target
 
@@ -154,13 +157,17 @@ home =
     let posts' = map fromPost posts
     html <- applyTemplate "home.html" $ HM.singleton "posts" posts'
     time <- Utilities.Action.now
+    css_bundle <- Shake.askOracle CSS
+    js_bundle <- Shake.askOracle Javascript
     -- Shake.putInfo $ T.unpack $ urlConvert target
     let page =
           Page
             { pageTitle = T.pack "Home",
               pageContent = html,
               pageNow = time,
-              pageUrl = urlConvert target
+              pageUrl = urlConvert target,
+              pageBundleCss = map T.pack css_bundle,
+              pageBundleJs = map T.pack js_bundle
             }
     applyTemplateAndWrite "default.html" page target
 

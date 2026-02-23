@@ -1,13 +1,27 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Utilities.Bundling
   ( bundled,
+    BuildOracleVariant
+      ( CSS,
+        Javascript
+      ),
   )
 where
 
 import Config (buildDir, cssGlobs, jsGlobs, outputDir)
-import Development.Shake (Action, RuleResult, Rules, addOracle, cmd_, command_, getDirectoryFiles, need, (%>))
+import Data.Aeson
+import Data.Aeson (decode)
+import Data.Aeson.Key (toText)
+import qualified Data.Aeson.KeyMap as KM
+import qualified Data.ByteString.Lazy as BL
+import Data.Maybe (fromJust)
+import Data.String (IsString (fromString))
+import Data.Text (Text)
+import qualified Data.Text as T
+import Development.Shake (Action, RuleResult, Rules, addOracle, addOracleCache, cmd_, command_, getDirectoryFiles, need, newCache, readFile', (%>))
 import Development.Shake.Classes
 import Development.Shake.FilePath ((</>))
 import GHC.Generics (Generic)
@@ -32,10 +46,13 @@ resource_dir = outputDir </> "resources"
 -- indicate completion/fulfill a need directive without rebuilding even when files
 -- are left unchanged, maybe have the need be a $(filename).hash which we compute
 -- ourselves based on the unminified input
-bundled :: Rules (BuildOracleVariant -> Action BuildOutputs)
-bundled = addOracle $ \q -> case q of
-  CSS -> bundle_css
-  Javascript -> bundle_scripts
+bundled :: Rules ()
+bundled = do
+  -- TODO: Need to adjust this oracle to split out source maps from js and css files
+  oracle <- addOracleCache $ \q -> case q of
+    CSS -> bundle_css
+    Javascript -> bundle_scripts
+  pure ()
 
 css_dir :: FilePath
 css_dir = resource_dir </> "css"
@@ -52,21 +69,39 @@ css_esbuild_options =
     "--metafile=" ++ css_meta_file
   ]
 
+newtype Metafile = Metafile
+  { outputs :: Object -- keys are the file paths
+  }
+  deriving (Show)
+
+instance FromJSON Metafile where
+  parseJSON = withObject "Metafile" $ \o ->
+    Metafile <$> o .: "outputs"
+
+outputPaths :: Metafile -> BuildOutputs
+outputPaths = map (T.unpack . toText) . KM.keys . outputs
+
+metafile_outputs :: FilePath -> Action BuildOutputs
+metafile_outputs metafile_path = do
+  src <- readFile' metafile_path
+  let intermediate = fromJust $ decode $ fromString src
+  pure $ outputPaths intermediate
+
 -- need to take an input of resouces/blah.css
 -- and in addition to bundling it
 bundle_css :: Action BuildOutputs
 bundle_css = do
   need cssGlobs
   css_files <- getDirectoryFiles "" cssGlobs
-  cmd_ "esbuild" (generic_esbuild_options ++ css_esbuild_options ++ css_files)
-  pure $ error "TODO: pull the list of files from the meta file"
+  cmd_ ("esbuild" :: String) (generic_esbuild_options ++ css_esbuild_options ++ css_files)
+  metafile_outputs css_meta_file
 
 -- Javascript and typescript
 -- potentially:
 -- "--target=es2020"
 -- , "--format=esm"
 js_esbuild_options :: [String]
-js_esbuild_options = ["--outdir=" ++ js_dir, "--splitting", "--metafile=" ++ js_meta_file]
+js_esbuild_options = ["--outdir=" ++ js_dir, "--splitting", "--format=esm", "--metafile=" ++ js_meta_file]
 
 js_meta_file :: FilePath
 js_meta_file = buildDir </> "esbuild-js-meta.json"
@@ -77,6 +112,6 @@ js_dir = resource_dir </> "js"
 bundle_scripts :: Action BuildOutputs
 bundle_scripts = do
   need jsGlobs
-  js_files <- getDirectoryFiles "" cssGlobs
-  cmd_ "esbuild" (generic_esbuild_options ++ js_esbuild_options ++ js_files)
-  pure $ error "TODO: pull the list of files from the meta file"
+  js_files <- getDirectoryFiles "" jsGlobs
+  cmd_ ("esbuild" :: String) (generic_esbuild_options ++ js_esbuild_options ++ js_files)
+  metafile_outputs js_meta_file
