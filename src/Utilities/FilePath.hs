@@ -31,7 +31,7 @@ res_path_handle :: String -> T.Text
 res_path_handle = T.pack . yeetTop
 
 yeetTop :: FilePath -> FilePath
-yeetTop path = new_dir </> filename
+yeetTop path = '/' : new_dir </> filename
   where
     new_dir = concat $ drop 1 $ FP.splitPath $ FP.takeDirectory path
     filename = FP.takeFileName path
