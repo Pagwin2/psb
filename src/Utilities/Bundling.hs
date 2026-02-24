@@ -21,7 +21,7 @@ import Data.Maybe (fromJust)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Development.Shake (Action, RuleResult, Rules, addOracle, addOracleCache, cmd_, command_, getDirectoryFiles, need, newCache, readFile', (%>))
+import Development.Shake (Action, RuleResult, Rules, Stderr (Stderr), Stdout (Stdout), addOracle, addOracleCache, cmd, command_, getDirectoryFiles, need, newCache, readFile', (%>))
 import Development.Shake.Classes
 import Development.Shake.FilePath ((</>))
 import GHC.Generics (Generic)
@@ -39,16 +39,8 @@ type instance RuleResult BuildOracleVariant = BuildOutputs
 resource_dir :: FilePath
 resource_dir = outputDir </> "resources"
 
--- TODO: not sure if I want all bundling to be an all at once afair, per file format
--- or multiple stages for various formats
---
--- Regardless the objective is to produce all of that while outputting a file to
--- indicate completion/fulfill a need directive without rebuilding even when files
--- are left unchanged, maybe have the need be a $(filename).hash which we compute
--- ourselves based on the unminified input
 bundled :: Rules ()
 bundled = do
-  -- TODO: Need to adjust this oracle to split out source maps from js and css files
   oracle <- addOracleCache $ \q -> case q of
     CSS -> bundle_css
     Javascript -> bundle_scripts
@@ -69,6 +61,8 @@ css_esbuild_options =
     "--metafile=" ++ css_meta_file
   ]
 
+-- I'm aware that this json handling is simultaneously overkill and a hack job
+-- however I don't care, I generated this mostly with an LLM anyways
 newtype Metafile = Metafile
   { outputs :: Object -- keys are the file paths
   }
@@ -93,7 +87,7 @@ bundle_css :: Action BuildOutputs
 bundle_css = do
   need cssGlobs
   css_files <- getDirectoryFiles "" cssGlobs
-  cmd_ ("esbuild" :: String) (generic_esbuild_options ++ css_esbuild_options ++ css_files)
+  (Stderr (), Stdout ()) <- cmd ("esbuild" :: String) (generic_esbuild_options ++ css_esbuild_options ++ css_files)
   metafile_outputs css_meta_file
 
 -- Javascript and typescript
@@ -113,5 +107,5 @@ bundle_scripts :: Action BuildOutputs
 bundle_scripts = do
   need jsGlobs
   js_files <- getDirectoryFiles "" jsGlobs
-  cmd_ ("esbuild" :: String) (generic_esbuild_options ++ js_esbuild_options ++ js_files)
+  (Stderr (), Stdout ()) <- cmd ("esbuild" :: String) (generic_esbuild_options ++ js_esbuild_options ++ js_files)
   metafile_outputs js_meta_file
