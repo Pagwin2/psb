@@ -10,6 +10,7 @@
             - Borsh
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
+- [ ] Refactor template handling so templates include other templates via lambda rather than implicitly https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
 - [ ] Make a function which takes IR and spits out some kind of table of contents
 - [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
     - [ ] Add in functionality for footnotes
