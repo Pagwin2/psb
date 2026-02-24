@@ -1,14 +1,6 @@
-- [ ] minify js and css when copying over instead of just copying
-    - Using ESBuild via an Oracle but figuring out where and how I want to use that oracle hurts my head
-- [ ] setup fingerprinting in file names for css and js
-    - setup lambdas via: https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
-    - This may require a refactor of how we handle templates to use `object` instead of just using aeson integration from the mustache crate
-- [ ] Make a function which takes IR and spits out some kind of table of contents
-- [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
-    - [ ] Add in functionality for footnotes
-- [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
-- [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 - [ ] process source code blocks to syntax highlight them
+    - skylighting https://hackage.haskell.org/package/skylighting
+        - More boring therefore more better
     - tree sitter https://hackage.haskell.org/package/tree-sitter
         - Alternatively do the Rust <-> Haskell binding myself
             - https://www.well-typed.com/blog/2023/03/purgatory/
@@ -18,7 +10,12 @@
             - Borsh
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
-    - Alternatively consider skylighting https://hackage.haskell.org/package/skylighting
+- [ ] Make a function which takes IR and spits out some kind of table of contents
+- [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
+    - [ ] Add in functionality for footnotes
+        - There should be a per footnote template as well and also either the default or post template should have an attribute which handles footnotes
+- [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
+- [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 - [ ] setup font subsetting (font file minimization)
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
