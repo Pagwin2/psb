@@ -11,8 +11,9 @@ import Config
 import Control.Monad (when)
 import Data.Aeson (ToJSON (toJSON))
 import qualified Data.HashMap.Strict as HM
-import Data.List (sortOn)
+import Data.List (isSuffixOf, sortOn)
 import qualified Data.Ord as Ord
+import Data.String (IsString (fromString))
 import qualified Data.Text as T
 import Data.Traversable (traverse)
 import Deriving.Aeson
@@ -28,7 +29,7 @@ import Types
 import Utilities.Action (getPublishedPosts, isDraft', markdownToHtml, markdownToPost, now, psbProgress)
 import Utilities.Bundling (BuildOracleVariant (CSS, Javascript), bundled)
 import qualified Utilities.CSS as CSS
-import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, urlConvert)
+import Utilities.FilePath (indexHtmlOutputPath, indexHtmlSourcePaths, isMarkdownPost, map_filter, res_path_handle, urlConvert)
 import qualified Utilities.Javascript as JS
 
 -- target = thing we want
@@ -58,6 +59,8 @@ buildSite = do
   Shake.need $ map (outputDir </>) assetPaths
 
   -- handle js, css and anything else we want to process before moving
+  -- to be honest I'm not sure what this is doing anymore but somehow
+  -- it's making the resource files get built
   resourcePaths <- Shake.getDirectoryFiles "resources/" resourceGlobs
   Shake.need $ map resourceHashPath resourcePaths
 
@@ -140,8 +143,8 @@ markdownPost src = do
             pageContent = postHtml,
             pageNow = time,
             pageUrl = urlConvert target,
-            pageBundleCss = map T.pack css_bundle,
-            pageBundleJs = map T.pack js_bundle
+            pageBundleCss = filter map_filter $ map res_path_handle css_bundle,
+            pageBundleJs = filter map_filter $ map res_path_handle js_bundle
           }
   applyTemplateAndWrite "default.html" page target
 
@@ -166,8 +169,8 @@ home =
               pageContent = html,
               pageNow = time,
               pageUrl = urlConvert target,
-              pageBundleCss = map T.pack css_bundle,
-              pageBundleJs = map T.pack js_bundle
+              pageBundleCss = filter map_filter $ map res_path_handle css_bundle,
+              pageBundleJs = filter map_filter $ map res_path_handle js_bundle
             }
     applyTemplateAndWrite "default.html" page target
 

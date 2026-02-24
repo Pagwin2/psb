@@ -1,6 +1,7 @@
 module Utilities.FilePath where
 
 import Config
+import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Development.Shake.FilePath ((<.>), (</>))
@@ -25,3 +26,15 @@ isMarkdownPost path = FP.takeExtension path == ".md"
 
 urlConvert :: FilePath -> Text
 urlConvert = T.pack . FP.dropFileName . flip FP.replaceDirectory1 "https://pagwin.xyz"
+
+res_path_handle :: String -> T.Text
+res_path_handle = T.pack . yeetTop
+
+yeetTop :: FilePath -> FilePath
+yeetTop path = new_dir </> filename
+  where
+    new_dir = concat $ drop 1 $ FP.splitPath $ FP.takeDirectory path
+    filename = FP.takeFileName path
+
+map_filter :: T.Text -> Bool
+map_filter = not . (T.isSuffixOf $ fromString ".map")

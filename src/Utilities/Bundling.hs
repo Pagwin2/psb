@@ -21,7 +21,7 @@ import Data.Maybe (fromJust)
 import Data.String (IsString (fromString))
 import Data.Text (Text)
 import qualified Data.Text as T
-import Development.Shake (Action, RuleResult, Rules, Stderr (Stderr), Stdout (Stdout), addOracle, addOracleCache, cmd, command_, getDirectoryFiles, need, newCache, readFile', (%>))
+import Development.Shake (Action, RuleResult, Rules, Stderr (Stderr), Stdout (Stdout), addOracle, addOracleCache, cmd, command_, getDirectoryFiles, need, readFile', (%>))
 import Development.Shake.Classes
 import Development.Shake.FilePath ((</>))
 import GHC.Generics (Generic)
