@@ -20,7 +20,15 @@ RUN apt update
 
 RUN apt upgrade -y
 
-RUN apt install esbuild -y
+RUN apt install locales curl -y
+
+# unfortunately debian is eternally outdated so we need to get esbuild from npm
+RUN curl -fsSL https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.27.3.tgz \
+    | tar -xz --strip-components=2 -C /usr/local/bin package/bin/esbuild
+
+# If I don't do this then some bit in Haskell throws a fit for BS Locale reasons
+RUN locale-gen en_US.UTF-8
+ENV LANG=C.UTF-8
 
 COPY --from=build /mnt /mnt
 
