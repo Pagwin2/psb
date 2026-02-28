@@ -10,14 +10,16 @@
             - Borsh
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
-- [ ] Refactor template handling so templates include other templates via lambda rather than implicitly https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
 - [ ] Make a function which takes IR and spits out some kind of table of contents
+- [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
+- [ ] setup font subsetting (font file minimization)
+    - `pyftsubset` (`fonttools subset`) is an external tool I can and probably should use
+    for this
+- [ ] Refactor template handling so templates include other templates via lambda rather than implicitly https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
+- [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
 - [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
     - [ ] Add in functionality for footnotes
         - There should be a per footnote template as well and also either the default or post template should have an attribute which handles footnotes
-- [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
-- [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
-- [ ] setup font subsetting (font file minimization)
 - [ ] dev server setup (with live reloading)
     - https://hackage-content.haskell.org/package/warp-3.4.10
     - https://hackage.haskell.org/package/file-embed

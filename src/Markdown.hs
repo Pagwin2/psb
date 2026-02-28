@@ -10,6 +10,7 @@ module Markdown (document, metadata) where
 import Control.Applicative (many, optional, some, (<|>))
 import Control.Monad (guard, void)
 import Data.Functor.Identity (Identity)
+import Data.List (intercalate)
 import Data.Maybe (fromMaybe, maybeToList)
 import Data.Proxy (Proxy (Proxy))
 import Data.String (IsString)
@@ -188,15 +189,16 @@ htmlBlock = do
   attrs <-
     if not hasEnded
       then
-        Just . toText . mconcat <$> htmlAttrs
+        Just . toText . intercalate " " <$> htmlAttrs
       else pure Nothing
+
   -- technically not standard markdown but I don't want to write a full HTML parser in my
   inside <- many (notFollowedBy ((chunk $ "</" <> tagName <> ">") <|> chunk "</>") *> anySingle)
   end <- toText <$> ((chunk $ "</" <> tagName <> ">") <|> chunk "</>")
   -- if a blockEnding after some whitespace isn't next when we should parse this as inline text/paragraph
   many ((notFollowedBy lineEnding) *> spaceChar)
   lookAhead blockEnding
-  pure $ HTML $ HTMLTag $ T.concat ["<", toText tagName, fromMaybe "" attrs, ">", T.pack inside, if end == "</>" then "" else end]
+  pure $ HTML $ HTMLTag $ T.concat ["<", toText tagName, " ", fromMaybe "" attrs, ">", T.pack inside, if end == "</>" then "" else end]
   where
     tagNameEnd = (lookAhead spaceChar <* space) <|> char '>'
     htmlAttrs = ((notFollowedBy $ char '>') *> htmlAttr) `sepBy` space
