@@ -10,6 +10,7 @@
             - Borsh
         - https://crates.io/crates/tree-sitter-highlight
         - Or potentially https://docs.rs/arborium/latest/arborium/
+- [ ] Make it so headers render with an anchor with a name to allow linking
 - [ ] Make a function which takes IR and spits out some kind of table of contents
 - [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
 - [ ] setup font subsetting (font file minimization)
@@ -24,4 +25,5 @@
     - https://hackage-content.haskell.org/package/warp-3.4.10
     - https://hackage.haskell.org/package/file-embed
     - https://hackage.haskell.org/package/fsnotify
+- [ ] Evaluate using Rolldown
 -  [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing
