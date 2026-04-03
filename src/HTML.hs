@@ -77,5 +77,5 @@ serializeInlineToHTML (Italic elems : remaining) = T.concat ["<i>", serializeInl
 serializeInlineToHTML (Crossed elems : remaining) = T.concat ["<s>", serializeInlineToHTML elems, "</s>", serializeInlineToHTML remaining]
 serializeInlineToHTML (InlineCode code : remaining) = T.concat ["<code>", escapeText code, "</code>", serializeInlineToHTML remaining]
 serializeInlineToHTML (Link {linkText, url, title} : remaining) = T.concat ["<a href=\"", url, "\"", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, ">", serializeInlineToHTML linkText, "</a>", serializeInlineToHTML remaining]
-serializeInlineToHTML (Image {altText, url, title} : remaining) = T.concat ["<img src=\">", url, "\" alt=\"", escapeText altText, "\"", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, ">", serializeInlineToHTML remaining]
+serializeInlineToHTML (Image {altText, url, title} : remaining) = T.concat ["<img src=\"", url, "\" alt=\"", escapeText altText, "\"", maybe "" (\t -> T.concat ["title=\"", escapeText t, "\""]) title, ">", serializeInlineToHTML remaining]
 serializeInlineToHTML (HTMLInline {inline_html_content} : remaining) = inline_html_content <> serializeInlineToHTML remaining

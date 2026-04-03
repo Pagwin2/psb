@@ -91,11 +91,16 @@ inlineText' disallow = choice [try $ strikethrough disallow, try $ bold disallow
       pure Link {linkText, url, title}
 
     image disallow = do
+      logDebug "image:before excl"
       char '!'
+      logDebug "image:after excl"
       -- Is this a hack? Yes. Bite me
+      logDebug "before link"
       link_hack <- link disallow
+      logDebug "after link"
       (altText, url, title) <- case link_hack of
         Link {linkText = [Text altText], url, title} -> pure (altText, url, title)
+        Link {linkText = [], url, title} -> pure ("", url, title)
         _ -> fail "Image alt text must be normal text, cannot be stylized in any way"
       pure Image {altText, url, title}
 

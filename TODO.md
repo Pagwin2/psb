@@ -1,24 +1,13 @@
 - [ ] process source code blocks to syntax highlight them
     - skylighting https://hackage.haskell.org/package/skylighting
         - More boring therefore more better
-    - tree sitter https://hackage.haskell.org/package/tree-sitter
-        - Alternatively do the Rust <-> Haskell binding myself
-            - https://www.well-typed.com/blog/2023/03/purgatory/
-            - https://willmcpherson2.substack.com/p/calling-rust-from-haskell
-            - https://github.com/BeFunctional/haskell-foreign-rust
-            - https://github.com/BeFunctional/haskell-rust-ffi
-            - Borsh
-        - https://crates.io/crates/tree-sitter-highlight
-        - Or potentially https://docs.rs/arborium/latest/arborium/
 - [ ] Make it so headers render with an anchor with a name to allow linking
 - [ ] Make a function which takes IR and spits out some kind of table of contents
 - [ ] swap from using `draft` to using `date` for determing draft status, lack of date = draft
 - [ ] setup font subsetting (font file minimization)
-    - `pyftsubset` (`fonttools subset`) is an external tool I can and probably should use
-    for this
-- [ ] Refactor template handling so templates include other templates via lambda rather than implicitly https://hackage-content.haskell.org/package/mustache-2.4.3.1/docs/Text-Mustache.html#v:overText
+    - `pyftsubset` (`fonttools subset`) is an external tool I can and probably should use for this
 - [ ] Fix time via timestamps potentially meaning something (via preshim?) and use local offset instead of absolute time https://www.rfc-editor.org/rfc/rfc3339#section-4.2
-- [ ] Add rst or org support and convert markdown handling to custom parser instead of pandoc
+- [ ] Add DJOT as an alternate syntax
     - [ ] Add in functionality for footnotes
         - There should be a per footnote template as well and also either the default or post template should have an attribute which handles footnotes
 - [ ] dev server setup (with live reloading)
@@ -26,4 +15,4 @@
     - https://hackage.haskell.org/package/file-embed
     - https://hackage.haskell.org/package/fsnotify
 - [ ] Evaluate using Rolldown
--  [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing
+- [ ] see if performance can be improved, it shouldn't be necessary but if I'm looking at doing something for this and everything above this got checked off then this is a sensible next thing
